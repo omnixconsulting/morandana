@@ -1,56 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  /* Fonts */
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display), Georgia, "Times New Roman", serif;
+  /* Brand palette (from Morandana Figma Make design) */
+  --color-brand-pink: #ff97a2;
+  --color-brand-vanilla: #f6dfa4;
+  --color-brand-blush: #ffe1e3;
+  --color-brand-cream: #fffaf8;
+  --color-brand-dark: #2b1810;
 
-  /* Brand palette (from Morandana Figma design) */
-  --color-coral: #f5808f; /* primary pink/coral */
-  --color-coral-deep: #ef6a7d; /* hero hours band + hover */
-  --color-coral-soft: #ffece9; /* soft pink header wash */
-  --color-cream: #f3d6a0; /* QR band tan */
-  --color-cream-soft: #f7e7c0;
-  --color-accent: #f7e2b0; /* cream italic display accent on pink */
-  --color-ink: #2a1b17; /* near-black warm brown for headings */
-  --color-espresso: #2a1611; /* footer background */
-  --color-muted: #6f615b; /* body gray-brown */
-  --color-cream-bg: #fffaf6; /* page background */
-  --color-line: #efe3da; /* hairline dividers */
+  /* Fonts — display serif is MADE Avenue (client's chosen main font),
+     paired with DM Sans for body/UI. */
+  --font-serif: var(--font-made), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
 }
 
-html {
-  scroll-behavior: smooth;
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-brand-cream);
+    color: var(--color-brand-dark);
+  }
+
+  /* MADE Avenue ships a single Regular weight; suppress faux-bold synthesis
+     so headings render in the typeface's true form. */
+  .font-serif {
+    font-synthesis-weight: none;
+  }
 }
 
-body {
-  font-family: var(--font-sans);
-}
-
-/* Soft repeating textures for accent bands */
-.texture-hearts {
-  background-image: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.16) 0 3px,
-    transparent 3px
-  );
-  background-size: 46px 46px;
-}
-
-.texture-marks {
-  background-image: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.5) 0 2px,
-    transparent 2px
-  );
-  background-size: 54px 54px;
-}
-
-/* Hide scrollbar on horizontal carousels */
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
