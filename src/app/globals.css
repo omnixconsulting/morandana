@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Fonts */
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, "Times New Roman", serif;
+
+  /* Brand palette (from Morandana Figma design) */
+  --color-coral: #f5808f; /* primary pink/coral */
+  --color-coral-deep: #ef6a7d; /* hero hours band + hover */
+  --color-coral-soft: #ffece9; /* soft pink header wash */
+  --color-cream: #f3d6a0; /* QR band tan */
+  --color-cream-soft: #f7e7c0;
+  --color-accent: #f7e2b0; /* cream italic display accent on pink */
+  --color-ink: #2a1b17; /* near-black warm brown for headings */
+  --color-espresso: #2a1611; /* footer background */
+  --color-muted: #6f615b; /* body gray-brown */
+  --color-cream-bg: #fffaf6; /* page background */
+  --color-line: #efe3da; /* hairline dividers */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Soft repeating textures for accent bands */
+.texture-hearts {
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.16) 0 3px,
+    transparent 3px
+  );
+  background-size: 46px 46px;
+}
+
+.texture-marks {
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.5) 0 2px,
+    transparent 2px
+  );
+  background-size: 54px 54px;
+}
+
+/* Hide scrollbar on horizontal carousels */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
