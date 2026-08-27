@@ -94,10 +94,9 @@ const fullMenu: Record<Tab, string[]> = {
 
 const tabLabel: Record<Tab, string> = { am: "A.M.", pm: "P.M.", bebidas: "Bebidas" };
 
-// Ubicación (pin verificado desde el Google Maps de Morandana).
-// TODO: confirmar el número exacto de la calle con el cliente.
+// Ubicación (dirección confirmada por el cliente; pin verificado desde su Google Maps).
 const LOCATION = {
-  addressLines: ["Av. Padre Mier, Centro", "Monterrey, Nuevo León · C.P. 64000"],
+  addressLines: ["Padre Mier 653, local 107", "Centro, 64000 Monterrey, N.L."],
   embed:
     "https://maps.google.com/maps?q=25.6707176,-100.3251116(Morandana)&z=17&hl=es&output=embed",
   directions:
