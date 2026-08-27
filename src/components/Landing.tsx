@@ -123,7 +123,17 @@ function MenuCard({ item }: { item: MenuItem }) {
   );
 }
 
-export default function Landing() {
+type IgPost = { image_url: string; post_url: string | null };
+const IG_PROFILE = "https://www.instagram.com/morandanamx";
+
+export default function Landing({ igPosts }: { igPosts?: IgPost[] }) {
+  // Feed desde Supabase (Plan C2); si viene vacío o sin configurar, usa el
+  // grid curado estático como respaldo.
+  const posts: IgPost[] =
+    igPosts && igPosts.length > 0
+      ? igPosts
+      : igGrid.map((image_url) => ({ image_url, post_url: IG_PROFILE }));
+
   const [scrolled, setScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("am");
   const [heroSlide, setHeroSlide] = useState(0);
@@ -345,10 +355,17 @@ export default function Landing() {
           <a href="https://www.instagram.com/morandanamx" target="_blank" rel="noopener noreferrer" className="text-brand-dark/45 text-sm font-semibold hover:text-brand-pink transition-colors">Seguir →</a>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {igGrid.map((photo, i) => (
-            <div key={i} className="relative overflow-hidden rounded-xl bg-brand-blush" style={{ aspectRatio: "1/1" }}>
-              <Image src={photo} alt={`Morandana ${i + 1}`} fill sizes="(max-width: 640px) 33vw, 170px" className="object-cover hover:scale-105 transition-transform duration-500" />
-            </div>
+          {posts.map((p, i) => (
+            <a
+              key={i}
+              href={p.post_url ?? IG_PROFILE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative block overflow-hidden rounded-xl bg-brand-blush"
+              style={{ aspectRatio: "1/1" }}
+            >
+              <Image src={p.image_url} alt={`Morandana ${i + 1}`} fill sizes="(max-width: 640px) 33vw, 170px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+            </a>
           ))}
         </div>
       </section>
