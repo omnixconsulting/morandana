@@ -94,6 +94,17 @@ const fullMenu: Record<Tab, string[]> = {
 
 const tabLabel: Record<Tab, string> = { am: "A.M.", pm: "P.M.", bebidas: "Bebidas" };
 
+// Ubicación (pin verificado desde el Google Maps de Morandana).
+// TODO: confirmar el número exacto de la calle con el cliente.
+const LOCATION = {
+  addressLines: ["Av. Padre Mier, Centro", "Monterrey, Nuevo León · C.P. 64000"],
+  embed:
+    "https://maps.google.com/maps?q=25.6707176,-100.3251116(Morandana)&z=17&hl=es&output=embed",
+  directions:
+    "https://www.google.com/maps/dir/?api=1&destination=25.6707176,-100.3251116",
+  share: "https://maps.app.goo.gl/dJ3bJ94CWrmuBi5u6",
+};
+
 function MenuCard({ item }: { item: MenuItem }) {
   return (
     <div className="flex-none w-64 rounded-2xl overflow-hidden bg-white" style={{ boxShadow: "0 2px 16px rgba(43,24,16,0.07)" }}>
@@ -343,6 +354,38 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* UBICACIÓN / MAPA */}
+      <section className="py-16 px-6 max-w-lg mx-auto">
+        <p className="text-brand-pink text-xs font-semibold uppercase tracking-[0.15em] mb-2">Dónde estamos</p>
+        <h2 className="font-serif font-bold text-brand-dark leading-[1.1]" style={{ fontSize: "clamp(2rem, 8vw, 2.8rem)" }}>Visítanos</h2>
+        <p className="mt-4 text-brand-dark/65 text-[15px] leading-relaxed">
+          {LOCATION.addressLines.map((line, i) => (
+            <span key={i}>
+              {line}
+              {i < LOCATION.addressLines.length - 1 && <br />}
+            </span>
+          ))}
+        </p>
+        <div className="mt-6 rounded-3xl overflow-hidden shadow-lg" style={{ aspectRatio: "4/3" }}>
+          <iframe
+            src={LOCATION.embed}
+            title="Ubicación de Morandana en Google Maps"
+            className="w-full h-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
+        </div>
+        <a
+          href={LOCATION.directions}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-flex items-center gap-2 bg-brand-pink text-white px-6 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"
+        >
+          Cómo llegar →
+        </a>
+      </section>
+
       {/* FOOTER */}
       <footer style={{ background: "#2b1810" }} className="py-14 px-6">
         <div className="max-w-lg mx-auto">
@@ -350,7 +393,7 @@ export default function Landing() {
             <Image src={img.logoVertical} alt="Morandana" width={334} height={182} className="h-28 w-auto object-contain" />
           </div>
 
-          <div className="grid grid-cols-2 gap-8 text-sm mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm mb-10">
             <div>
               <p className="font-serif font-bold text-brand-vanilla mb-3 text-base">Horarios</p>
               <p className="text-white/55 leading-relaxed">Lunes a Sábado<br />7:30 am – 7:00 pm</p>
@@ -359,6 +402,18 @@ export default function Landing() {
             <div>
               <p className="font-serif font-bold text-brand-vanilla mb-3 text-base">Redes</p>
               <a href="https://www.instagram.com/morandanamx" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-brand-pink transition-colors">Instagram<br />@morandanamx</a>
+            </div>
+            <div>
+              <p className="font-serif font-bold text-brand-vanilla mb-3 text-base">Ubicación</p>
+              <p className="text-white/55 leading-relaxed">
+                {LOCATION.addressLines.map((line, i) => (
+                  <span key={i}>
+                    {line}
+                    {i < LOCATION.addressLines.length - 1 && <br />}
+                  </span>
+                ))}
+              </p>
+              <a href={LOCATION.directions} target="_blank" rel="noopener noreferrer" className="text-brand-pink hover:text-white transition-colors inline-block mt-2 font-semibold">Cómo llegar →</a>
             </div>
           </div>
 
