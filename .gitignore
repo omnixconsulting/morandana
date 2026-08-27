@@ -33,3 +33,5 @@ Thumbs.db
 # Misc
 .cache/
 coverage/
+.vercel
+.env*

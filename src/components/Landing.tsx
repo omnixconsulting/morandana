@@ -85,6 +85,15 @@ const igGrid = [
   img.am.frenchToast,
 ];
 
+// Full menu pages (rasterized from the PDFs) shown in the in-site viewer.
+const fullMenu: Record<Tab, string[]> = {
+  am: ["/img/menu-full/am-1.jpg", "/img/menu-full/am-2.jpg"],
+  pm: ["/img/menu-full/pm-1.jpg", "/img/menu-full/pm-2.jpg"],
+  bebidas: ["/img/menu-full/beb-1.jpg", "/img/menu-full/beb-2.jpg"],
+};
+
+const tabLabel: Record<Tab, string> = { am: "A.M.", pm: "P.M.", bebidas: "Bebidas" };
+
 function MenuCard({ item }: { item: MenuItem }) {
   return (
     <div className="flex-none w-64 rounded-2xl overflow-hidden bg-white" style={{ boxShadow: "0 2px 16px rgba(43,24,16,0.07)" }}>
@@ -108,6 +117,7 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("am");
   const [heroSlide, setHeroSlide] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   const TOTAL_SLIDES = 3;
 
   useEffect(() => {
@@ -120,6 +130,19 @@ export default function Landing() {
     const timer = setInterval(() => setHeroSlide((s) => (s + 1) % TOTAL_SLIDES), 4000);
     return () => clearInterval(timer);
   }, []);
+
+  // Lock body scroll and enable Escape-to-close while the menu viewer is open.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const menuItems = activeTab === "am" ? menuAM : activeTab === "pm" ? menuPM : menuBebidas;
   const menuPdf = activeTab === "am" ? pdf.am : activeTab === "pm" ? pdf.pm : pdf.bebidas;
@@ -260,7 +283,7 @@ export default function Landing() {
 
         <div className="px-6 max-w-[900px] mx-auto flex items-center justify-between mt-1">
           <p className="text-brand-dark/40 text-[11px]">Todos los precios incluyen IVA. Avísanos si tienes alguna alergia.</p>
-          <a href={menuPdf} target="_blank" rel="noopener noreferrer" className="text-brand-pink text-[13px] font-semibold hover:underline flex-none ml-4">Ver menú completo →</a>
+          <button type="button" onClick={() => setMenuOpen(true)} className="text-brand-pink text-[13px] font-semibold hover:underline flex-none ml-4">Ver menú completo →</button>
         </div>
       </section>
 
@@ -345,6 +368,51 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* MENU VIEWER (lightbox) */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-brand-dark/95 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Menú ${tabLabel[activeTab]}`}>
+          <header className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-white/10">
+            <p className="font-serif font-bold text-white text-lg">
+              Menú <span className="text-brand-vanilla">{tabLabel[activeTab]}</span>
+            </p>
+            <div className="flex items-center gap-2">
+              <a
+                href={menuPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/85 text-sm font-semibold hover:text-white px-3 py-1.5 rounded-full border border-white/20 hover:border-white/40 transition-colors"
+              >
+                Descargar PDF
+              </a>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Cerrar"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white text-2xl leading-none hover:bg-white/20 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+          </header>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+            <div className="mx-auto max-w-2xl space-y-4">
+              {fullMenu[activeTab].map((src, i) => (
+                <Image
+                  key={src}
+                  src={src}
+                  alt={`Menú ${tabLabel[activeTab]} — página ${i + 1}`}
+                  width={1275}
+                  height={1650}
+                  sizes="(max-width: 768px) 100vw, 672px"
+                  priority={i === 0}
+                  className="w-full h-auto rounded-xl bg-white shadow-2xl"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
