@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { WhatsAppChat } from "./WhatsAppChat";
 
 // Assets live in /public/img (see the Figma Make export). Served through
 // next/image for AVIF/WebP conversion, responsive sizes, and lazy-loading.
@@ -495,6 +496,8 @@ export default function Landing({
           </div>
         </div>
       )}
+
+      <WhatsAppChat />
     </div>
   );
 }
