@@ -126,13 +126,24 @@ function MenuCard({ item }: { item: MenuItem }) {
 type IgPost = { image_url: string; post_url: string | null };
 const IG_PROFILE = "https://www.instagram.com/morandanamx";
 
-export default function Landing({ igPosts }: { igPosts?: IgPost[] }) {
+type MenuData = { am: MenuItem[]; pm: MenuItem[]; bebidas: MenuItem[] };
+
+export default function Landing({
+  igPosts,
+  menu,
+}: {
+  igPosts?: IgPost[];
+  menu?: MenuData;
+}) {
   // Feed desde Supabase (Plan C2); si viene vacío o sin configurar, usa el
   // grid curado estático como respaldo.
   const posts: IgPost[] =
     igPosts && igPosts.length > 0
       ? igPosts
       : igGrid.map((image_url) => ({ image_url, post_url: IG_PROFILE }));
+
+  // Menú desde Supabase; si no hay, usa los arreglos estáticos como respaldo.
+  const menuData: MenuData = menu ?? { am: menuAM, pm: menuPM, bebidas: menuBebidas };
 
   const [scrolled, setScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("am");
@@ -164,7 +175,7 @@ export default function Landing({ igPosts }: { igPosts?: IgPost[] }) {
     };
   }, [menuOpen]);
 
-  const menuItems = activeTab === "am" ? menuAM : activeTab === "pm" ? menuPM : menuBebidas;
+  const menuItems = menuData[activeTab];
   const menuPdf = activeTab === "am" ? pdf.am : activeTab === "pm" ? pdf.pm : pdf.bebidas;
 
   return (
