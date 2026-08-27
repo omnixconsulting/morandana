@@ -1,10 +1,10 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
-// Assets live in /public/img (see the Figma Make export). Plain <img> keeps
-// the design's object-cover / full-bleed behavior 1:1 with the source.
+// Assets live in /public/img (see the Figma Make export). Served through
+// next/image for AVIF/WebP conversion, responsive sizes, and lazy-loading.
 const img = {
   logoHorizontal: "/img/logo-horizontal.png",
   logoVertical: "/img/logo-vertical.png",
@@ -90,9 +90,9 @@ function MenuCard({ item }: { item: MenuItem }) {
     <div className="flex-none w-64 rounded-2xl overflow-hidden bg-white" style={{ boxShadow: "0 2px 16px rgba(43,24,16,0.07)" }}>
       <div className="h-44 overflow-hidden bg-brand-blush flex items-center justify-center relative">
         {item.img ? (
-          <img src={item.img} alt={item.name} className="w-full h-full object-cover" style={{ objectPosition: item.imgPosition ?? "center" }} />
+          <Image src={item.img} alt={item.name} fill sizes="256px" className="object-cover" style={{ objectPosition: item.imgPosition ?? "center" }} />
         ) : (
-          <img src={img.isotipo} alt="" className="w-14 h-14 object-contain opacity-25" />
+          <Image src={img.isotipo} alt="" width={56} height={43} className="w-14 h-14 object-contain opacity-25" />
         )}
       </div>
       <div className="p-4">
@@ -133,10 +133,13 @@ export default function Landing() {
         style={{ background: scrolled ? "rgba(255,250,248,0.96)" : "transparent", backdropFilter: scrolled ? "blur(8px)" : "none", boxShadow: scrolled ? "0 1px 0 rgba(43,24,16,0.06)" : "none" }}
       >
         <div className="max-w-lg mx-auto px-5 py-3.5 flex items-center justify-between">
-          <img
+          <Image
             src={img.logoHorizontal}
             alt="Morandana"
-            className="h-7 object-contain"
+            width={362}
+            height={100}
+            priority
+            className="h-7 w-auto object-contain"
             style={{ filter: !scrolled ? "brightness(0) invert(1)" : "none", transition: "filter 0.3s" }}
           />
           <a
@@ -154,7 +157,7 @@ export default function Landing() {
 
         {/* Slide 0 — Foto brindis */}
         <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 0 ? 1 : 0, pointerEvents: heroSlide === 0 ? "auto" : "none" }}>
-          <img src={img.heroBrindis} alt="Brindis Morandana" className="absolute inset-0 w-full h-full object-cover" />
+          <Image src={img.heroBrindis} alt="Brindis Morandana" fill priority sizes="100vw" className="object-cover" />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.02) 40%, rgba(43,24,16,0.72) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Café &amp; Desayunos</p>
@@ -175,7 +178,7 @@ export default function Landing() {
 
         {/* Slide 1 — Promo 3×2 */}
         <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 1 ? 1 : 0, pointerEvents: heroSlide === 1 ? "auto" : "none" }}>
-          <img src={img.promoTresCafes} alt="Tres cafés Morandana" className="absolute inset-0 w-full h-full object-cover" />
+          <Image src={img.promoTresCafes} alt="Tres cafés Morandana" fill sizes="100vw" className="object-cover" />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.35) 0%, rgba(43,24,16,0.1) 35%, rgba(43,24,16,0.75) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Promoción</p>
@@ -193,7 +196,7 @@ export default function Landing() {
 
         {/* Slide 2 — Pide por QR */}
         <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 2 ? 1 : 0, pointerEvents: heroSlide === 2 ? "auto" : "none" }}>
-          <img src={img.promoQR} alt="Pedido desde la app de Morandana" className="absolute inset-0 w-full h-full object-cover object-center" />
+          <Image src={img.promoQR} alt="Pedido desde la app de Morandana" fill sizes="100vw" className="object-cover object-center" />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.3) 0%, rgba(43,24,16,0.05) 35%, rgba(43,24,16,0.75) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Pide en línea</p>
@@ -283,8 +286,8 @@ export default function Landing() {
           <p className="mt-5 text-brand-dark/65 text-[15px] leading-relaxed">Morandana es más que café. Es el lugar donde los desayunos se convierten en pláticas largas y las tardes se estiran sin querer.</p>
           <p className="mt-3 text-brand-dark/65 text-[15px] leading-relaxed">Un espacio cálido, bien iluminado y lleno de buena energía. Para trabajar, para salir con amigas, para celebrar lo cotidiano.</p>
         </div>
-        <div className="rounded-3xl overflow-hidden" style={{ aspectRatio: "4/5" }}>
-          <img src={img.cafe} alt="Barista de Morandana con galleta y café" className="w-full h-full object-cover" />
+        <div className="relative rounded-3xl overflow-hidden" style={{ aspectRatio: "4/5" }}>
+          <Image src={img.cafe} alt="Barista de Morandana con galleta y café" fill sizes="(max-width: 640px) 100vw, 512px" className="object-cover" />
         </div>
       </section>
 
@@ -292,7 +295,7 @@ export default function Landing() {
       <section className="mx-4 mb-4 rounded-3xl relative overflow-hidden py-16 px-8" style={{ background: "#f6dfa4" }}>
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `url(${img.isotipo})`, backgroundRepeat: "repeat", backgroundSize: "96px 96px", opacity: 0.09 }} />
         <div className="relative max-w-lg mx-auto text-center">
-          <img src={img.isotipo} alt="" className="w-14 h-14 mx-auto mb-6 object-contain" style={{ opacity: 0.75 }} />
+          <Image src={img.isotipo} alt="" width={56} height={43} className="w-14 h-14 mx-auto mb-6 object-contain" style={{ opacity: 0.75 }} />
           <h2 className="font-serif font-bold text-brand-dark leading-[1.1]" style={{ fontSize: "clamp(1.8rem, 7vw, 2.4rem)" }}>Pide desde tu lugar<br />con nuestro QR</h2>
           <p className="mt-5 text-brand-dark/70 text-[15px] leading-relaxed">Escanea el código, elige lo que se te antoje y… luego pasas directito a recoger. Así de fácil.</p>
           <p className="mt-3 text-brand-dark/45 text-sm">También disponible desde el link en nuestra bio de Instagram.</p>
@@ -310,8 +313,8 @@ export default function Landing() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {igGrid.map((photo, i) => (
-            <div key={i} className="overflow-hidden rounded-xl bg-brand-blush" style={{ aspectRatio: "1/1" }}>
-              <img src={photo} alt={`Morandana ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+            <div key={i} className="relative overflow-hidden rounded-xl bg-brand-blush" style={{ aspectRatio: "1/1" }}>
+              <Image src={photo} alt={`Morandana ${i + 1}`} fill sizes="(max-width: 640px) 33vw, 170px" className="object-cover hover:scale-105 transition-transform duration-500" />
             </div>
           ))}
         </div>
@@ -321,7 +324,7 @@ export default function Landing() {
       <footer style={{ background: "#2b1810" }} className="py-14 px-6">
         <div className="max-w-lg mx-auto">
           <div className="flex flex-col items-center mb-10">
-            <img src={img.logoVertical} alt="Morandana" className="h-28 object-contain" />
+            <Image src={img.logoVertical} alt="Morandana" width={334} height={182} className="h-28 w-auto object-contain" />
           </div>
 
           <div className="grid grid-cols-2 gap-8 text-sm mb-10">
@@ -338,7 +341,7 @@ export default function Landing() {
 
           <div className="pt-6 border-t flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
             <p className="text-white/30 text-xs">© 2026 Morandana. Todos los derechos reservados.</p>
-            <img src={img.isotipo} alt="" className="h-6 w-6 object-contain opacity-30" />
+            <Image src={img.isotipo} alt="" width={24} height={24} className="h-6 w-6 object-contain opacity-30" />
           </div>
         </div>
       </footer>
