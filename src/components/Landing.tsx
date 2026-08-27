@@ -237,10 +237,10 @@ export default function Landing({
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.35) 0%, rgba(43,24,16,0.1) 35%, rgba(43,24,16,0.75) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Promoción</p>
-            <h1 className="font-serif font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(2.8rem, 11vw, 4rem)" }}>
+            <h2 className="font-serif font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(2.8rem, 11vw, 4rem)" }}>
               3×2 en<br />bebidas<br />
               <em className="italic" style={{ color: "#f6dfa4" }}>con café</em>
-            </h1>
+            </h2>
             <p className="mt-4 text-white/90 text-base font-semibold">Lunes a viernes · 4:00 pm – 6:00 pm</p>
             <p className="mt-2 text-white/65 text-sm">Aplica en todas las bebidas con café. ¡Tráete a quien quieras!</p>
             <div className="mt-7">
@@ -255,11 +255,11 @@ export default function Landing({
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.3) 0%, rgba(43,24,16,0.05) 35%, rgba(43,24,16,0.75) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Pide en línea</p>
-            <h1 className="font-serif font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(2.8rem, 11vw, 4rem)" }}>
+            <h2 className="font-serif font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(2.8rem, 11vw, 4rem)" }}>
               Pide desde<br />
               <em className="italic" style={{ color: "#f6dfa4" }}>tu lugar</em><br />
               con el QR
-            </h1>
+            </h2>
             <p className="mt-4 text-white/75 text-base leading-relaxed max-w-xs">Escanea, elige lo que se te antoje y… luego pasas directito a recoger.</p>
             <div className="mt-7">
               <a href="/qr" className="inline-block px-6 py-3 rounded-full font-semibold text-sm text-white transition-opacity hover:opacity-90" style={{ background: "#ff97a2" }}>Pide aquí →</a>
