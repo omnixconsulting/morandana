@@ -3,6 +3,7 @@ import { DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Trackers from "@/components/Trackers";
 import "./globals.css";
 
 // Display serif — MADE Avenue (PERSONAL USE license; purchase commercial
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full bg-brand-cream font-sans text-brand-dark">
         {children}
+        <Trackers />
         <Analytics />
         <SpeedInsights />
       </body>
