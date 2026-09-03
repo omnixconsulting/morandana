@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { WhatsAppChat } from "./WhatsAppChat";
+import { track } from "@/lib/analytics";
 
 // Assets live in /public/img (see the Figma Make export). Served through
 // next/image for AVIF/WebP conversion, responsive sizes, and lazy-loading.
@@ -199,6 +200,7 @@ export default function Landing({
           />
           <a
             href="/qr"
+            onClick={() => track("ClicQR", { source: "nav" })}
             className="text-sm font-semibold px-4 py-2 rounded-full transition-all duration-200"
             style={{ background: scrolled ? "#ff97a2" : "rgba(255,255,255,0.2)", color: "white", backdropFilter: !scrolled ? "blur(4px)" : "none" }}
           >
@@ -262,7 +264,7 @@ export default function Landing({
             </h2>
             <p className="mt-4 text-white/75 text-base leading-relaxed max-w-xs">Escanea, elige lo que se te antoje y… luego pasas directito a recoger.</p>
             <div className="mt-7">
-              <a href="/qr" className="inline-block px-6 py-3 rounded-full font-semibold text-sm text-white transition-opacity hover:opacity-90" style={{ background: "#ff97a2" }}>Pide aquí →</a>
+              <a href="/qr" onClick={() => track("ClicQR", { source: "hero_slide" })} className="inline-block px-6 py-3 rounded-full font-semibold text-sm text-white transition-opacity hover:opacity-90" style={{ background: "#ff97a2" }}>Pide aquí →</a>
             </div>
           </div>
         </div>
@@ -408,6 +410,7 @@ export default function Landing({
           href={LOCATION.directions}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track("ComoLlegar", { source: "mapa" })}
           className="mt-6 inline-flex items-center gap-2 bg-brand-pink text-white px-6 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           Cómo llegar →
@@ -441,7 +444,7 @@ export default function Landing({
                   </span>
                 ))}
               </p>
-              <a href={LOCATION.directions} target="_blank" rel="noopener noreferrer" className="text-brand-pink hover:text-white transition-colors inline-block mt-2 font-semibold">Cómo llegar →</a>
+              <a href={LOCATION.directions} target="_blank" rel="noopener noreferrer" onClick={() => track("ComoLlegar", { source: "footer" })} className="text-brand-pink hover:text-white transition-colors inline-block mt-2 font-semibold">Cómo llegar →</a>
             </div>
           </div>
 

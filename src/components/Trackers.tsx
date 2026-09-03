@@ -3,36 +3,38 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { useConsent } from "@/lib/analytics";
 
 // IDs públicos de tracking. Se configuran como variables de entorno en Vercel
-// (Production). Si faltan, el componente no renderiza nada — cero impacto.
+// (Production). Si faltan, no se renderiza nada — cero impacto.
 //   NEXT_PUBLIC_META_PIXEL_ID   → Meta/Facebook Pixel (solo dígitos)
-//   NEXT_PUBLIC_GOOGLE_ADS_ID   → Google Ads / Google tag (formato AW-XXXXXXXXX)
+//   NEXT_PUBLIC_GOOGLE_ADS_ID   → Google Ads / Google tag (AW-XXXXXXXXX o G-XXXX)
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 
-declare global {
-  interface Window {
-    fbq?: (...args: unknown[]) => void;
-    gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[];
-  }
-}
-
 export default function Trackers() {
+  const { consent } = useConsent();
+  const granted = consent === "granted";
   const pathname = usePathname();
-  const firstRun = useRef(true);
+  const lastPath = useRef<string | null>(null);
 
-  // La carga inicial ya dispara PageView desde cada script; aquí solo cubrimos
-  // las navegaciones del lado del cliente (App Router no recarga la página).
+  // La carga inicial ya dispara PageView desde cada script; aquí cubrimos las
+  // navegaciones del App Router (SPA). lastPath evita el doble disparo cuando
+  // el consentimiento se concede después del montaje.
   useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
+    if (!granted) return;
+    if (lastPath.current === null) {
+      lastPath.current = pathname;
       return;
     }
-    if (META_PIXEL_ID) window.fbq?.("track", "PageView");
-    if (GOOGLE_ADS_ID) window.gtag?.("event", "page_view");
-  }, [pathname]);
+    if (lastPath.current !== pathname) {
+      lastPath.current = pathname;
+      if (META_PIXEL_ID) window.fbq?.("track", "PageView");
+      if (GOOGLE_ADS_ID) window.gtag?.("event", "page_view");
+    }
+  }, [pathname, granted]);
+
+  if (!granted) return null;
 
   return (
     <>
