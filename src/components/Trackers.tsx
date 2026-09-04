@@ -9,7 +9,7 @@ import { useConsent } from "@/lib/analytics";
 // etc. se configuran DENTRO de GTM (sin tocar código). Se activa por env var
 // pública en Vercel (Production): NEXT_PUBLIC_GTM_ID = GTM-XXXXXXX
 // Es NEXT_PUBLIC_ → se hornea en build; requiere redeploy al cambiarla.
-const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || "GTM-5G75G6WC";
 
 export default function Trackers() {
   const { consent } = useConsent();
