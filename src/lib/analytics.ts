@@ -13,8 +13,6 @@ const EVENT = "mrd-consent-change";
 
 declare global {
   interface Window {
-    fbq?: (...args: unknown[]) => void;
-    gtag?: (...args: unknown[]) => void;
     dataLayer?: unknown[];
   }
 }
@@ -57,13 +55,14 @@ export function useConsent() {
   };
 }
 
-// Dispara un evento a Meta Pixel (trackCustom) y a Google (gtag event).
-// No-op si los scripts no cargaron (sin consentimiento) — fbq/gtag no existen.
+// Empuja un evento al dataLayer de GTM. Google Tag Manager (cargado tras el
+// consentimiento) escucha estos eventos y dispara los tags configurados
+// (Meta Pixel, Google Ads, GA4, …). Sin GTM, el push solo llena el array.
 export function track(event: string, params?: Record<string, unknown>): void {
   if (typeof window === "undefined") return;
   try {
-    window.fbq?.("trackCustom", event, params);
-    window.gtag?.("event", event, params);
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event, ...params });
   } catch {
     /* nunca romper la navegación por un error de tracking */
   }
