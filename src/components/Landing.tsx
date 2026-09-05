@@ -150,6 +150,9 @@ export default function Landing({
   const [scrolled, setScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("am");
   const [heroSlide, setHeroSlide] = useState(0);
+  // Difiere las slides 1–2 hasta que cargue la 0, para que el LCP (imagen del
+  // hero) tenga todo el ancho de banda en la primera carga (mejora LCP móvil).
+  const [heroReady, setHeroReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const TOTAL_SLIDES = 3;
 
@@ -162,6 +165,12 @@ export default function Landing({
   useEffect(() => {
     const timer = setInterval(() => setHeroSlide((s) => (s + 1) % TOTAL_SLIDES), 4000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Respaldo: si el onLoad de la slide 0 no dispara, habilita las demás a los 2 s.
+  useEffect(() => {
+    const t = setTimeout(() => setHeroReady(true), 2000);
+    return () => clearTimeout(t);
   }, []);
 
   // Lock body scroll and enable Escape-to-close while the menu viewer is open.
@@ -214,7 +223,7 @@ export default function Landing({
 
         {/* Slide 0 — Foto brindis */}
         <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 0 ? 1 : 0, pointerEvents: heroSlide === 0 ? "auto" : "none" }}>
-          <Image src={img.heroBrindis} alt="Brindis Morandana" fill priority sizes="100vw" className="object-cover" />
+          <Image src={img.heroBrindis} alt="Brindis Morandana" fill priority sizes="100vw" onLoad={() => setHeroReady(true)} className="object-cover" />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.02) 40%, rgba(43,24,16,0.72) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Café &amp; Desayunos</p>
@@ -235,7 +244,7 @@ export default function Landing({
 
         {/* Slide 1 — Promo 3×2 */}
         <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 1 ? 1 : 0, pointerEvents: heroSlide === 1 ? "auto" : "none" }}>
-          <Image src={img.promoTresCafes} alt="Tres cafés Morandana" fill sizes="100vw" className="object-cover" />
+          {(heroReady || heroSlide === 1) && <Image src={img.promoTresCafes} alt="Tres cafés Morandana" fill sizes="100vw" className="object-cover" />}
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.35) 0%, rgba(43,24,16,0.1) 35%, rgba(43,24,16,0.75) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Promoción</p>
@@ -253,7 +262,7 @@ export default function Landing({
 
         {/* Slide 2 — Pide por QR */}
         <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 2 ? 1 : 0, pointerEvents: heroSlide === 2 ? "auto" : "none" }}>
-          <Image src={img.promoQR} alt="Pedido desde la app de Morandana" fill sizes="100vw" className="object-cover object-center" />
+          {(heroReady || heroSlide === 2) && <Image src={img.promoQR} alt="Pedido desde la app de Morandana" fill sizes="100vw" className="object-cover object-center" />}
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.3) 0%, rgba(43,24,16,0.05) 35%, rgba(43,24,16,0.75) 100%)" }} />
           <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
             <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Pide en línea</p>
