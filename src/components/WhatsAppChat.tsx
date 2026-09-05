@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/lib/analytics";
 
 // Número de Morandana (lada país 52 + 10 dígitos, solo dígitos).
 const WHATSAPP = {
@@ -54,6 +55,7 @@ export function WhatsAppChat() {
               href={waLink}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track("ClicWhatsApp", { source: "chat_card" })}
               className="flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: WA_GREEN }}
             >
