@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "next typegen && tsc --noEmit",
+    "guardia": "./scripts/guardia-secretos.sh",
+    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run build",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
@@ -23,6 +28,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

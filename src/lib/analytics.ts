@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 // Consentimiento de cookies (Meta + Google) + helper de eventos.
 // El consentimiento vive en localStorage; los componentes se sincronizan por
@@ -36,17 +36,23 @@ export function setConsent(c: Consent): void {
   window.dispatchEvent(new Event(EVENT));
 }
 
+function subscribe(onChange: () => void): () => void {
+  window.addEventListener(EVENT, onChange);
+  return () => window.removeEventListener(EVENT, onChange);
+}
+
+// El "ready" no tiene suscripción: solo distingue el render del servidor
+// —donde no hay localStorage— del primero del navegador.
+const noSubscribe = () => () => {};
+
 // Hook: estado de consentimiento reactivo + acciones aceptar/rechazar.
+// El consentimiento vive fuera de React (localStorage + un evento del window),
+// así que se lee con useSyncExternalStore y no dentro de un efecto: leerlo en
+// un efecto provoca un render en cascada y deja el banner parpadeando entre la
+// hidratación y la primera lectura.
 export function useConsent() {
-  const [consent, setC] = useState<Consent | null>(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    setC(getConsent());
-    setReady(true);
-    const handler = () => setC(getConsent());
-    window.addEventListener(EVENT, handler);
-    return () => window.removeEventListener(EVENT, handler);
-  }, []);
+  const consent = useSyncExternalStore(subscribe, getConsent, () => null);
+  const ready = useSyncExternalStore(noSubscribe, () => true, () => false);
   return {
     consent,
     ready,
