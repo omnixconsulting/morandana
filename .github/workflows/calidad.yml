@@ -1,0 +1,41 @@
+name: Calidad
+
+# Nivel 0 del estándar de QA de Meridian (docs/proceso-qa.md del repo meridian).
+# Capa L0: lint, tipos, guardia de secretos y build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Un push nuevo al mismo PR cancela la corrida anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: Lint, tipos, secretos y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/node-install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # El bundle del navegador es público: se revisa antes de construirlo.
+      - name: Guardia de secretos
+        run: npm run guardia
+
+      - name: Build
+        run: npm run build

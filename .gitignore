@@ -35,3 +35,6 @@ Thumbs.db
 coverage/
 .vercel
 .env*
+
+# tsc --noEmit con incremental deja este artefacto
+*.tsbuildinfo
