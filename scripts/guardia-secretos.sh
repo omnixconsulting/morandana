@@ -26,7 +26,10 @@ fi
 
 # 3. Un componente de cliente se envía entero al navegador: solo puede leer
 #    variables NEXT_PUBLIC_. Todo lo demás pertenece a un módulo de servidor.
-clientes=$(git grep -l '"use client"' -- 'src/' || true)
+# Se busca `use client` sin las comillas: 'use client' y "use client" son
+# ambos válidos y un patrón con comillas deja de cubrir el otro estilo en
+# silencio. Buscar de más aquí solo amplía la revisión, nunca la reduce.
+clientes=$(git grep -l 'use client' -- 'src/' || true)
 if [ -n "$clientes" ]; then
   malos=$(printf '%s\n' "$clientes" | while read -r f; do
     grep -nE 'process\.env\.' "$f" | grep -vE 'process\.env\.NEXT_PUBLIC_' | sed "s|^|$f:|"
