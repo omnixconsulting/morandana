@@ -11,7 +11,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "guardia": "./scripts/guardia-secretos.sh",
     "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run build",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
