@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "guardia": "./scripts/guardia-secretos.sh",
     "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run build",
     "prepare": "husky"
