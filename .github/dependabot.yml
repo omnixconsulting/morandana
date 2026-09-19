@@ -7,16 +7,20 @@ updates:
       minor-y-patch: { update-types: [minor, patch] }
     labels: [dependencias]
     open-pull-requests-limit: 5
-    # Saltos mayores atados entre sí: next y eslint-config-next se actualizan
-    # juntos y con migración planeada, no por PR automático.
+    # Los saltos de versión MAYOR no se automatizan: son migraciones planeadas,
+    # no un PR que alguien fusiona un martes. Se ignoran en bloque en vez de
+    # enumerarlos uno por uno.
+    #
+    # Por qué en bloque: hasta el 19-sep-2026 esto era una lista por dependencia,
+    # distinta en cada uno de los siete repos y todas incompletas. Se colaron
+    # @eslint/js 10 y react-router-dom 7 en el portal, eslint 10 en morandana y
+    # zod 4 en shikomi y mise — cada hueco era una entrada que nadie agregó. Una
+    # política escrita como enumeración deriva; escrita como regla, no.
+    #
+    # Lo que se pierde: Dependabot ya no avisa de que salió un mayor nuevo. Eso se
+    # recupera con `npm outdated` al planear la migración, que es cuando sirve.
     ignore:
-      - dependency-name: next
-        update-types: ["version-update:semver-major"]
-      - dependency-name: eslint-config-next
-        update-types: ["version-update:semver-major"]
-      - dependency-name: tailwindcss
-        update-types: ["version-update:semver-major"]
-      - dependency-name: typescript
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
