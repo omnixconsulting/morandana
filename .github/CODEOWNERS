@@ -1,0 +1,8 @@
+# Revisión obligatoria por dueño de área. Hoy revisa una sola persona.
+*                       @omnixconsulting
+
+# El consentimiento de cookies: si se rompe, GTM puede cargar tras un rechazo.
+# Eso es cumplimiento, no UX, y el repo no tiene pruebas que lo cubran.
+src/lib/analytics.ts    @omnixconsulting
+src/components/CookieBanner.tsx @omnixconsulting
+src/components/Trackers.tsx @omnixconsulting

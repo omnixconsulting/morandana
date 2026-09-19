@@ -1,0 +1,47 @@
+name: Título del PR
+
+# El título del PR sigue Conventional Commits, igual que los mensajes de commit.
+# Va como workflow y no como hook porque el título se edita en GitHub, donde
+# ningún hook local puede verlo.
+#
+# Comenta el error en vez de solo fallar: un check rojo sin explicación manda a
+# la persona a leer logs de CI para descubrir que le falta un prefijo.
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  titulo:
+    name: Validar el título
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        id: lint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: always() && steps.lint.outputs.error_message != null
+        with:
+          header: pr-titulo
+          message: |
+            El título de este PR tiene que seguir [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/), igual que los mensajes de commit.
+
+            ```
+            ${{ steps.lint.outputs.error_message }}
+            ```
+
+            Ejemplos válidos en este portafolio: `feat(proposals): …`, `fix(ci): …`, `docs: …`, `chore(deps): …`.
+
+      # Borra el comentario cuando el título se corrige, para no dejar un aviso
+      # rancio colgando en un PR que ya está bien.
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.lint.outputs.error_message == null
+        with:
+          header: pr-titulo
+          delete: true
