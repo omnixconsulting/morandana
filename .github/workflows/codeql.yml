@@ -1,0 +1,25 @@
+name: CodeQL
+# Repo privado en plan Free: sin Code Scanning en GitHub. Se analiza igual, el SARIF
+# se guarda como artefacto y el job falla si hay hallazgos (error/warning).
+on:
+  push: { branches: [main] }
+  pull_request:
+  schedule: [{ cron: '0 9 * * 1' }]
+permissions: { actions: read, contents: read }
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with: { languages: javascript-typescript }
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with: { upload: never, output: sarif }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: { name: codeql-sarif, path: sarif, retention-days: 30 }
+      - name: Fallar si hay hallazgos
+        run: |
+          n=$(jq '[.runs[].results[] | select((.level // "warning") != "note")] | length' sarif/*.sarif | paste -sd+ - | bc)
+          echo "hallazgos: $n"
+          if [ "$n" -gt 0 ]; then jq -r '.runs[].results[] | "\(.level // "warning")\t\(.ruleId)\t\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' sarif/*.sarif; exit 1; fi
