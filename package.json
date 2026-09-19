@@ -11,7 +11,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "guardia": "./scripts/guardia-secretos.sh",
     "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run build",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "commitlint": "commitlint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -22,6 +23,8 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
