@@ -1,0 +1,38 @@
+# Reglas de secretos del portafolio Meridian, para barrer HISTORIAL con gitleaks.
+# Las guardias de cada repo (`scripts/guardia-secretos.sh`) solo miran el árbol
+# de trabajo; esto mira todos los commits. Los patrones son los mismos que ellas
+# declaran, más los de Shopify que documenta el de stellium.
+title = "Meridian — secretos del portafolio"
+
+[extend]
+useDefault = true   # además de las reglas de gitleaks (JWT, entropía, etc.)
+
+[[rules]]
+id = "meridian-supabase-secret"
+description = "Supabase service key (formato nuevo sb_secret_)"
+regex = '''sb_secret_[A-Za-z0-9_-]{20,}'''
+
+[[rules]]
+id = "meridian-anthropic"
+description = "Llave de Anthropic"
+regex = '''sk-ant-[A-Za-z0-9_-]{24,}'''
+
+[[rules]]
+id = "meridian-resend"
+description = "Llave de Resend"
+regex = '''\bre_[A-Za-z0-9_-]{24,}'''
+
+[[rules]]
+id = "meridian-aws"
+description = "Access key de AWS/R2"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+id = "meridian-shopify"
+description = "Token de Shopify (shptka_ Theme Access, shpat_ Admin, shpss_ Storefront)"
+regex = '''shp(tka|at|ss)_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "meridian-calcom"
+description = "Llave de Cal.com en vivo"
+regex = '''cal_live_[A-Za-z0-9_-]{20,}'''
