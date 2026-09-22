@@ -38,3 +38,6 @@ coverage/
 
 # tsc --noEmit con incremental deja este artefacto
 *.tsbuildinfo
+
+# Postgres local de scripts/base-local.sh
+.base-local/
