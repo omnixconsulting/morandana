@@ -39,3 +39,23 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Capa L2: las políticas RLS contra un Postgres real. El sitio entero habla con
+  # Supabase por la llave `anon`, que viaja en el bundle del navegador, así que
+  # RLS es lo único que separa a un visitante de la tabla `leads` (nombre, correo,
+  # teléfono y mensaje de personas reales).
+  base:
+    name: Políticas RLS contra Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Los binarios de Postgres vienen preinstalados en el runner; base-local.sh
+      # los localiza. No hace falta Docker ni `supabase start`.
+      - name: Levantar Postgres con las migraciones
+        run: npm run db:local
+
+      - name: Pruebas SQL
+        run: npm run db:test

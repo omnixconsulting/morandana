@@ -10,6 +10,9 @@
     "lint:fix": "eslint --fix",
     "typecheck": "next typegen && tsc --noEmit",
     "guardia": "./scripts/guardia-secretos.sh",
+    "db:local": "./scripts/base-local.sh",
+    "db:local:stop": "./scripts/base-local.sh --stop",
+    "db:test": "./scripts/test-db.sh",
     "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run build",
     "prepare": "husky || true",
     "commitlint": "commitlint"
