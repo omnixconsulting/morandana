@@ -59,3 +59,27 @@ jobs:
 
       - name: Pruebas SQL
         run: npm run db:test
+
+  # `guardia` mira el ÁRBOL. Esta mira los COMMITS del PR: un secreto que entra
+  # en un commit y se borra en el siguiente deja el árbol limpio y se queda en
+  # los objetos de git para siempre.
+  historial:
+    name: Secretos en el historial
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # gitleaks necesita el historial, no un checkout somero
+
+      - name: Guardia de historial
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          CABEZA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -n "$BASE" ]; then
+            ./scripts/guardia-historial.sh "$BASE..$CABEZA"
+          else
+            ./scripts/guardia-historial.sh
+          fi
