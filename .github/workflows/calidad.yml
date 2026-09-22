@@ -37,6 +37,11 @@ jobs:
       - name: Guardia de secretos
         run: npm run guardia
 
+      # Las cabeceras se declaran en next.config.ts: nadie las compila contra
+      # un esquema y un recorte distraído las borra en silencio.
+      - name: Cabeceras de seguridad
+        run: npm run cabeceras
+
       - name: Build
         run: npm run build
 
