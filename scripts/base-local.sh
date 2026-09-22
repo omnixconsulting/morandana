@@ -11,13 +11,17 @@
 # de ig_posts inserta un bucket y define una política sobre storage.objects).
 # No hay stub de `auth`: morandana no usa auth.uid() en ninguna política.
 #
-# SOBRE LOS PRIVILEGIOS DE `anon` — importa para que la prueba signifique algo:
-# morandana no versiona ningún GRANT, así que sus permisos efectivos vienen de
-# los valores por omisión del proyecto hospedado, donde `anon` sí tiene acceso
-# de tabla y **RLS es la única puerta**. Aquí se replica eso a propósito. Si
-# local concediera de menos, la prueba pasaría por falta de privilegio en vez de
-# por la política, que es justo el falso verde que hay que evitar. Conceder de
-# más solo hace la prueba más difícil de pasar, nunca más fácil.
+# SOBRE LOS PRIVILEGIOS DE `anon` — importa para que la prueba signifique algo.
+# Antes de las migraciones se aplican los privilegios por omisión de Supabase
+# (`alter default privileges`), de modo que las tablas que crean las migraciones
+# nazcan con el acceso amplio que tendrían en el proyecto hospedado. Después,
+# `20260922120000_privilegios_explicitos.sql` los revoca y concede solo lo que
+# el sitio usa — igual que hará en producción.
+#
+# El orden es el punto: si el andamiaje concediera DESPUÉS de las migraciones,
+# borraría el efecto de esa migración y la prueba pasaría por un permiso que
+# producción no tiene. Y si no concediera nada, las negativas vendrían por falta
+# de privilegio en vez de por la política, que es el otro falso verde.
 
 set -euo pipefail
 export LC_ALL="${LC_ALL:-C}"
@@ -101,6 +105,14 @@ grant select on storage.objects to anon, authenticated;
 grant all on storage.buckets, storage.objects to service_role;
 
 grant usage on schema public to anon, authenticated, service_role;
+
+-- Privilegios por omisión de Supabase: las tablas que creen las migraciones
+-- nacen con acceso amplio para anon/authenticated. La migración de privilegios
+-- explícitos los recorta después, igual que en el proyecto hospedado.
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant usage, select on sequences to anon, authenticated, service_role;
 SQL
 
 echo "→ aplicando migraciones"
@@ -112,14 +124,6 @@ for f in "$RAIZ"/supabase/migrations/*.sql; do
     exit 1
   fi
 done
-
-# Después de las migraciones, porque aplica a las tablas ya creadas. Ver la nota
-# de arriba: esto replica los valores por omisión del proyecto hospedado.
-echo "→ privilegios por omisión de Supabase (RLS queda como única puerta)"
-Q -d "$DB" <<'SQL'
-grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
-grant usage, select on all sequences in schema public to anon, authenticated, service_role;
-SQL
 
 echo
 echo "Listo — postgresql://postgres@localhost:$PUERTO/$DB"
