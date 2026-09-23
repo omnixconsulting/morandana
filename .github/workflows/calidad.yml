@@ -42,6 +42,12 @@ jobs:
       - name: Cabeceras de seguridad
         run: npm run cabeceras
 
+      # Dependabot cubre CVE publicadas. Esto cubre lo otro: procedencia,
+      # integridad, y que ninguna dependencia nueva traiga un postinstall sin
+      # que alguien lo note.
+      - name: Cadena de suministro
+        run: npm run cadena
+
       - name: Build
         run: npm run build
 

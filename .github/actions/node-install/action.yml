@@ -18,7 +18,14 @@ runs:
 
     - name: Instalar dependencias
       shell: bash
-      run: npm ci --no-audit --no-fund
+      # --ignore-scripts: `npm ci` ejecuta los scripts de ciclo de vida de CADA
+      # dependencia, así que un paquete comprometido corre código en el runner
+      # —con el token del workflow al alcance— antes de que ninguna puerta lo
+      # revise. Dependabot cubre CVE publicadas; esto cubre lo otro.
+      #
+      # Se comprobó que el repo construye sin ellos antes de fijarlo, y los pocos
+      # que los traen están en contracts/scripts-de-instalacion.txt.
+      run: npm ci --ignore-scripts --no-audit --no-fund
       env:
         # Los hooks de git no corren en CI: las mismas puertas ya son jobs.
         HUSKY: '0'

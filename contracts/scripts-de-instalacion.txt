@@ -1,0 +1,18 @@
+# Paquetes que ejecutan código al instalarse (npm: preinstall/install/postinstall).
+#
+# POR QUÉ SE CONGELAN
+# Un script de instalación corre con los permisos de quien instala, antes de que
+# ninguna puerta revise nada. En CI eso es el runner, con el token del workflow
+# al alcance. Es la vía de compromiso de cadena de suministro que Dependabot NO
+# cubre: Dependabot avisa de CVE publicadas, no de un paquete que ayer era
+# inofensivo y hoy trae un postinstall nuevo.
+#
+# El CI instala con --ignore-scripts, así que hoy NO se ejecutan. Esta lista es
+# la segunda mitad: si una dependencia nueva trae uno, aparece aquí como un
+# diff que alguien tiene que mirar a propósito.
+#
+# Agregar una línea es una decisión, no un trámite: significa aceptar que ese
+# paquete pueda ejecutar código en la máquina de quien instale sin --ignore-scripts
+# (por ejemplo, en local).
+#
+unrs-resolver
