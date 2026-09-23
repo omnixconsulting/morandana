@@ -1,0 +1,31 @@
+name: Gatekeeper
+# Un unico check requerido que espera a que TODOS los demas terminen en verde.
+#
+# POR QUE
+# La proteccion de rama exige una lista de checks por nombre. Mantenerla a mano
+# no escala: cada workflow nuevo obliga a tocar la configuracion del repo, y un
+# job que no corre —porque su area no cambio— nunca reporta estado, asi que la
+# proteccion o espera para siempre o hay que apagarla.
+#
+# Este job es el unico que se marca como requerido. El resto se descubre solo.
+#
+# REGLA (proceso-qa.md 5.4): si este repo adopta `changed-files`, el gatekeeper
+# tiene que estar ya. Uno sin el otro rompe la Puerta 2 en silencio, que es peor
+# que no tener ninguno de los dos.
+on:
+  pull_request:
+    branches: [main]
+permissions: { checks: read, statuses: read }
+jobs:
+  gatekeeper:
+    name: Gatekeeper
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: upsidr/merge-gatekeeper@09af7a82c1666d0e64d2bd8c01797a0bcfd3bb5d # v1.2.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # `self` debe coincidir con el `name:` del job, o se esperaria a si mismo.
+          self: Gatekeeper
+          timeout: 900
+          interval: 20
