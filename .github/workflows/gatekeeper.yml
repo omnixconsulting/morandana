@@ -1,86 +1,31 @@
-# Gatekeeper — el único check requerido por la protección de rama.
-#
-# POR QUÉ EXISTE
-# La protección exige un check con nombre fijo. Exigir los nombres de cada job
-# tiene dos problemas: hay que actualizarla en ocho repos cada vez que un job
-# cambia de nombre, y —peor— un job que deja de correr desaparece del PR sin
-# que la protección lo note. Un check requerido que nunca aparece bloquea para
-# siempre; uno que se deja de exigir pasa en silencio. Las dos fallan callando.
-#
-# Este job agrega: espera a TODAS las demás comprobaciones de Actions del repo
-# y falla si alguna falló. Renombrar o agregar un job no exige tocar la
-# protección, y un job que desaparece se nota porque el conteo baja.
-#
-# QUÉ NO AGREGA, A PROPÓSITO
-# Los estados externos (Vercel) no se incluyen. El 22-sep-2026 el despliegue de
-# preview de mise falló de forma reproducible en varias ramas mientras el mismo
-# commit desplegaba bien en `main`: gatear con eso bloquearía PRs por un
-# problema del entorno de previews, no del código. Si algún día el preview se
-# vuelve confiable, se agrega aquí y se dice por qué.
-
 name: Gatekeeper
-
+# Un unico check requerido que espera a que TODOS los demas terminen en verde.
+#
+# POR QUE
+# La proteccion de rama exige una lista de checks por nombre. Mantenerla a mano
+# no escala: cada workflow nuevo obliga a tocar la configuracion del repo, y un
+# job que no corre —porque su area no cambio— nunca reporta estado, asi que la
+# proteccion o espera para siempre o hay que apagarla.
+#
+# Este job es el unico que se marca como requerido. El resto se descubre solo.
+#
+# REGLA (proceso-qa.md 5.4): si este repo adopta `changed-files`, el gatekeeper
+# tiene que estar ya. Uno sin el otro rompe la Puerta 2 en silencio, que es peor
+# que no tener ninguno de los dos.
 on:
   pull_request:
-
-permissions:
-  checks: read
-  contents: read
-
-concurrency:
-  group: gatekeeper-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
+    branches: [main]
+permissions: { checks: read, statuses: read }
 jobs:
   gatekeeper:
     name: Gatekeeper
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-      - name: Esperar a las demás puertas del repo
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -uo pipefail
-
-          # Margen para que los otros workflows registren sus checks. Sin esto,
-          # Gatekeeper podría concluir "no hay nada pendiente" antes de que
-          # exista nada — el falso verde que este job viene a evitar.
-          sleep 45
-
-          fin=$(( $(date +%s) + 25*60 ))
-          while :; do
-            runs=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
-                     --jq '.check_runs[] | select(.name != "Gatekeeper")
-                           | "\(.status)|\(.conclusion // "")|\(.name)"' 2>/dev/null)
-
-            if [ -z "$runs" ]; then
-              echo "::error::No hay ninguna otra comprobación en este commit. Gatekeeper no aprueba en vacío."
-              exit 1
-            fi
-
-            pendientes=$(printf '%s\n' "$runs" | grep -vc '^completed|') || true
-            if [ "${pendientes:-0}" -gt 0 ]; then
-              [ "$(date +%s)" -ge "$fin" ] && {
-                echo "::error::Se agotó la espera con $pendientes comprobación(es) sin terminar:"
-                printf '%s\n' "$runs" | grep -v '^completed|' | sed 's/^/  /'
-                exit 1; }
-              echo "→ $pendientes pendiente(s); reviso de nuevo en 20s"
-              sleep 20
-              continue
-            fi
-
-            malas=$(printf '%s\n' "$runs" | grep -E '^completed\|(failure|cancelled|timed_out|action_required|stale)\|' || true)
-            total=$(printf '%s\n' "$runs" | wc -l | tr -d ' ')
-            if [ -n "$malas" ]; then
-              echo "::error::Puertas en rojo:"
-              printf '%s\n' "$malas" | sed 's/^/  /'
-              exit 1
-            fi
-
-            echo "Gatekeeper: $total comprobación(es), todas en verde."
-            printf '%s\n' "$runs" | sed 's/^/  /'
-            exit 0
-          done
+      - uses: upsidr/merge-gatekeeper@09af7a82c1666d0e64d2bd8c01797a0bcfd3bb5d # v1.2.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # `self` debe coincidir con el `name:` del job, o se esperaria a si mismo.
+          self: Gatekeeper
+          timeout: 900
+          interval: 20
