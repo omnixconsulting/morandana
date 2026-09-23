@@ -48,6 +48,11 @@ jobs:
       - name: Cadena de suministro
         run: npm run cadena
 
+      # LFPDPPP: «sin PII en logs, analítica ni errores» estaba escrito en el
+      # estándar y no lo comprobaba nada. Era una regla, no una puerta.
+      - name: PII en logs
+        run: npm run pii
+
       - name: Build
         run: npm run build
 
