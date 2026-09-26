@@ -1,7 +1,7 @@
 # Reglas de secretos del portafolio Meridian, para barrer HISTORIAL con gitleaks.
 # Las guardias de cada repo (`scripts/guardia-secretos.sh`) solo miran el árbol
 # de trabajo; esto mira todos los commits. Los patrones son los mismos que ellas
-# declaran, más los de Shopify que documenta el de stellium.
+# declaran, más los cinco de Shopify que documenta el de stellium.
 title = "Meridian — secretos del portafolio"
 
 [extend]
@@ -27,10 +27,45 @@ id = "meridian-aws"
 description = "Access key de AWS/R2"
 regex = '''AKIA[0-9A-Z]{16}'''
 
+# Shopify: CINCO prefijos, y una regla por prefijo a proposito.
+#
+# Son cinco y no tres porque la guardia del arbol de stellium ya cubria shpca_
+# (cliente OAuth) y shpsa_ (app), asi que el historial era mas ciego que el
+# arbol. Y van separadas porque la alternacion NO FUNCIONA aqui: con
+# `shp(tka|at|ss|ca|sa)_` gitleaks 8.30.1 detecta tka, at, ca y sa, y se salta
+# shpss_ en silencio. Reordenar la alternacion no lo arregla, ni declarar
+# `keywords` explicitos; una regla por prefijo si. Verificado el 26-sep-2026
+# plantando los cinco. Ojo: `git grep -E` con la misma alternacion si atrapa los
+# cinco, asi que este defecto es solo de gitleaks y no se ve desde la guardia del
+# arbol.
+#
+# Un shpss_ de 32 hex lo atrapa la regla `shopify-shared-secret` que trae
+# gitleaks por defecto, lo que hacia parecer que la nuestra funcionaba.
+
 [[rules]]
-id = "meridian-shopify"
-description = "Token de Shopify (shptka_ Theme Access, shpat_ Admin, shpss_ Storefront)"
-regex = '''shp(tka|at|ss)_[A-Za-z0-9]{20,}'''
+id = "meridian-shopify-tka"
+description = "Token de Shopify Theme Access (shptka_)"
+regex = '''shptka_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "meridian-shopify-at"
+description = "Token de Shopify Admin API (shpat_)"
+regex = '''shpat_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "meridian-shopify-ss"
+description = "Token de Shopify Storefront privado (shpss_)"
+regex = '''shpss_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "meridian-shopify-ca"
+description = "Token de Shopify de cliente OAuth (shpca_)"
+regex = '''shpca_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "meridian-shopify-sa"
+description = "Token de Shopify de app (shpsa_)"
+regex = '''shpsa_[A-Za-z0-9]{20,}'''
 
 [[rules]]
 id = "meridian-calcom"
