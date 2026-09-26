@@ -13,8 +13,11 @@ yo=':!scripts/guardia-secretos.sh'
 
 # 1. Valores de llaves secretas en cualquier archivo versionado. Los patrones
 #    exigen longitud de llave real para no marcar menciones en comentarios.
-if git grep -InE 'sb_secret_[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{24,}|re_[A-Za-z0-9_-]{24,}|AKIA[0-9A-Z]{16}' -- "$yo"; then
-  echo '::error::Valor de llave secreta versionado.'
+LLAVES='sb_secret_[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{24,}|AKIA[0-9A-Z]{16}|(^|[^A-Za-z0-9_])re_[A-Za-z0-9_-]{24,}|shp(tka|at|ss)_[A-Za-z0-9]{20,}|cal_live_[A-Za-z0-9_-]{20,}'
+hallazgos=$(git grep -noE "$LLAVES" -- "$yo")
+if [ -n "$hallazgos" ]; then
+  printf '%s\n' "$hallazgos" | sed -E 's/^([^:]+):([0-9]+):[^A-Za-z0-9]*(.{8}).*$/  \1:\2  \3…/'
+  echo '::error::Valor de llave secreta versionado. Ya está en el historial de git: rótala, borrar la línea no basta.'
   fallos=1
 fi
 
