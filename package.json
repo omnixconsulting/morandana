@@ -16,7 +16,8 @@
     "db:local": "./scripts/base-local.sh",
     "db:local:stop": "./scripts/base-local.sh --stop",
     "db:test": "./scripts/test-db.sh",
-    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run pii && npm run cadena && npm run cabeceras && npm run build",
+    "workflows": "./scripts/validar-workflows.sh",
+    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run pii && npm run cadena && npm run cabeceras && npm run build && npm run workflows",
     "prepare": "husky || true",
     "commitlint": "commitlint"
   },
