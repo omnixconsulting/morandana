@@ -35,6 +35,9 @@ Thumbs.db
 coverage/
 .vercel
 .env*
+# ...menos el contrato, que va versionado a proposito: declara QUE lee el
+# codigo, sin valores. validar-env.sh exige que este en git.
+!.env.example
 
 # tsc --noEmit con incremental deja este artefacto
 *.tsbuildinfo
