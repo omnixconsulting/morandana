@@ -20,25 +20,10 @@
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-VERSION="8.30.1"
-SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
-
-if command -v gitleaks >/dev/null 2>&1; then
-  GL=gitleaks
-else
-  # En CI no viene instalado. Se descarga la versión fijada y se verifica el
-  # checksum: sin eso, esta guardia sería un vector de cadena de suministro
-  # dentro de la guardia de seguridad.
-  TMP="$(mktemp -d)"
-  trap 'rm -rf "$TMP"' EXIT
-  URL="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
-  echo "→ descargando gitleaks ${VERSION}"
-  curl -sSfL "$URL" -o "$TMP/gl.tar.gz"
-  echo "${SHA256}  $TMP/gl.tar.gz" | sha256sum -c - >/dev/null || {
-    echo "::error::El checksum de gitleaks no coincide. Se aborta." >&2; exit 1; }
-  tar -xzf "$TMP/gl.tar.gz" -C "$TMP" gitleaks
-  GL="$TMP/gitleaks"
-fi
+# La version fijada y su checksum viven en scripts/traer-gitleaks.sh, que es la
+# unica implementacion: el arnes de llaves plantadas necesita el mismo binario, y
+# dos copias serian dos sitios donde fijar la version y verificar el hash.
+GL="$(./scripts/traer-gitleaks.sh)"
 
 RANGO="${1:-}"
 if [ -n "$RANGO" ]; then

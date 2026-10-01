@@ -99,3 +99,10 @@ jobs:
           else
             ./scripts/guardia-historial.sh
           fi
+
+      # El arnes de llaves plantadas (5.7.0): comprueba que LOS DOS motores atrapen
+      # lo mismo. Vive en este job y no en la Puerta 1 porque necesita los dos, y
+      # gitleaks solo esta garantizado aqui. Va DESPUES de la guardia del historial:
+      # que las dos listas diverjan no debe impedir escanear los commits del PR.
+      - name: Arnes de llaves plantadas
+        run: ./scripts/arnes-secretos.sh
