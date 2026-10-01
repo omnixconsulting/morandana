@@ -106,3 +106,8 @@ jobs:
       # que las dos listas diverjan no debe impedir escanear los commits del PR.
       - name: Arnes de llaves plantadas
         run: ./scripts/arnes-secretos.sh
+      # El arnes del validador de workflows (5.7.2): comprueba que sus expresiones
+      # sigan casando. Una regex que deja de casar no falla, pasa, y encontro asi dos
+      # cegueras del propio validador.
+      - name: Arnes del validador de workflows
+        run: ./scripts/arnes-workflows.sh
