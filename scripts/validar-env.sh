@@ -59,7 +59,14 @@ if [ -n "$sobran" ]; then
   echo "::error::$EJEMPLO declara variables que nadie lee. Una que sobra tambien es deriva."
   printf '%s\n' "$sobran" | sed 's/^/    nadie la lee: /'; fallos=1
 fi
-convalor=$(grep -E '^[A-Z_][A-Z0-9_]*=.+' "$EJEMPLO" | sed 's/=.*//')
+# Un comentario alineado no es un valor. `=.+` casa el relleno de espacios y la
+# almohadilla, asi que `VAR=        # nota` se denunciaba como valor inexistente.
+# Hay que recortar el comentario en linea y los espacios ANTES de juzgar.
+convalor=$(awk -F= '/^[A-Z_][A-Z0-9_]*=/ {
+  v = substr($0, index($0, "=") + 1)
+  sub(/[ \t]*#.*$/, "", v); gsub(/^[ \t]+|[ \t]+$/, "", v)
+  if (length(v)) print $1
+}' "$EJEMPLO")
 if [ -n "$convalor" ]; then
   echo "::error::$EJEMPLO trae valores. Va vacio: es un contrato, no un almacen."
   printf '%s\n' "$convalor" | sed 's/^/    con valor: /'; fallos=1
