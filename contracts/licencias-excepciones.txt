@@ -1,0 +1,44 @@
+# Dependencias con licencia fuera de la lista permisiva, aceptadas a propósito.
+#
+# POR QUÉ SE CONGELAN
+# Este repo es un producto que se entrega a un cliente. Una dependencia AGPL,
+# SSPL, BUSL o con licencia propietaria dentro del árbol obliga al cliente a
+# cosas que nadie negoció, y es un problema legal, no técnico: no la detecta
+# ningún CVE ni ningún hash de integridad. `validar-cadena.sh` ya vigila de
+# dónde vienen los paquetes y qué ejecutan al instalarse; la licencia es la
+# pieza que le faltaba.
+#
+# La lista permisiva vive en `scripts/validar-cadena.sh`. Todo lo que no está
+# ahí tiene que estar aquí, o la puerta falla.
+#
+# FORMATO
+#   patrón<espacios>licencia-SPDX-exacta<espacios>por qué
+#
+# El patrón puede terminar en `*` para cubrir una familia de binarios por
+# plataforma. La licencia NO admite comodín: va la cadena SPDX exacta que trae
+# el lockfile. Un paquete nuevo bajo el mismo patrón con otra licencia falla,
+# que es el punto. Un paquete nuevo bajo el patrón con la MISMA licencia pasa,
+# y eso es deliberado: es la licencia que ya se revisó, y la alternativa es que
+# cada plataforma que npm agregue rompa el CI.
+#
+# Agregar una línea es una decisión legal, no un trámite. Y una línea que ya no
+# empata con ningún paquete del lockfile también falla: una excepción muerta es
+# una revisión que nadie volvió a hacer.
+#
+# Cómo se leen las familias que puede haber aquí:
+#   LGPL y MPL son copyleft, pero ninguna de las dos se contagia por enlazar.
+#   LGPL-3.0 obliga solo si se MODIFICA la biblioteca; sharp la usa tal cual y
+#   en binarios aparte. MPL-2.0 es copyleft por archivo: obliga solo si se
+#   modifican SUS archivos. No modificamos ninguno de los dos.
+
+# sharp — optimización de imágenes, la trae Next.js
+@img/sharp-libvips-*   LGPL-3.0-or-later                          libvips sin modificar, en binarios por plataforma
+@img/sharp-wasm32      Apache-2.0 AND LGPL-3.0-or-later AND MIT   mismo caso, compilación a WebAssembly
+@img/sharp-win32-*     Apache-2.0 AND LGPL-3.0-or-later           mismo caso, binarios de Windows
+
+# lightningcss — el compilador de CSS de Tailwind 4
+lightningcss           MPL-2.0                                    no modificamos sus archivos
+lightningcss-*         MPL-2.0                                    binarios por plataforma del anterior
+
+# axe-core — reglas de accesibilidad, solo en pruebas
+axe-core               MPL-2.0                                    no modificamos sus archivos
