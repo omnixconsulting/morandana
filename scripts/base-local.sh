@@ -54,13 +54,54 @@ fi
 stop_server() { como_pg "$BIN/pg_ctl" -D "$PGDATA" -m fast stop >/dev/null 2>&1 || true; }
 if [ "${1:-}" = "--stop" ]; then stop_server; echo "base-local: servidor detenido."; exit 0; fi
 
-if [ ! -d "$PGDATA/base" ] && command -v lsof >/dev/null 2>&1; then
-  if lsof -tiTCP:"$PUERTO" -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "→ liberando el puerto $PUERTO (postmaster huérfano)"
-    lsof -tiTCP:"$PUERTO" -sTCP:LISTEN | xargs kill -9 2>/dev/null || true
-    sleep 1
+# El puerto, antes de arrancar. Los puertos van en pares entre repos hermanos
+# — 55433 MAP/medicarmen, 55432 shikomi/mise—, así que encontrarlo ocupado por
+# otro repo es lo normal: solo puede haber uno de cada par arriba a la vez.
+#
+# Esto antes se "resolvía" con `kill -9` sobre cualquier cosa que escuchara,
+# llamándola «postmaster huérfano» sin comprobarlo. En un clon nuevo eso mataba
+# la base viva del repo hermano a SIGKILL, sin apagado limpio, dejándola en
+# recuperación y con posible pérdida de WAL sin vaciar. Ahora se comprueba de
+# quién es el proceso y, si no es nuestro, el script se niega y dice cómo
+# apagarlo. No mata nada que no sea suyo.
+AJENOS=""
+puerto_de_otro() {
+  command -v lsof >/dev/null 2>&1 || return 1
+  local ocupantes mio p
+  ocupantes="$(lsof -tiTCP:"$PUERTO" -sTCP:LISTEN 2>/dev/null)"
+  [ -n "$ocupantes" ] || return 1
+  mio=""
+  if [ -f "$PGDATA/postmaster.pid" ]; then
+    mio="$(head -1 "$PGDATA/postmaster.pid" 2>/dev/null)"
   fi
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    # Es el postmaster de ESTE datadir: no hay conflicto, `pg_ctl status` de
+    # más abajo decide si hace falta arrancarlo.
+    if [ -n "$mio" ] && [ "$p" = "$mio" ]; then return 1; fi
+  done <<< "$ocupantes"
+  AJENOS="$ocupantes"
+  return 0
+}
+
+if puerto_de_otro; then
+  echo "::error::El puerto $PUERTO lo tiene otro Postgres, y no es el de este repo." >&2
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    echo "  PID $p — $(ps -o command= -p "$p" 2>/dev/null)" >&2
+  done <<< "$AJENOS"
+  cat >&2 <<'AYUDA'
+
+Apágalo desde SU repo, que cierra limpio:
+    ./scripts/base-local.sh --stop
+
+Si de verdad quedó huérfano (su repo ya no existe), apágalo a mano. Este
+script no lo mata: un `kill -9` sobre un postmaster vivo deja la base en
+recuperación y puede perder WAL sin vaciar.
+AYUDA
+  exit 1
 fi
+
 
 if [ ! -d "$PGDATA/base" ]; then
   echo "→ initdb en $PGDATA"
