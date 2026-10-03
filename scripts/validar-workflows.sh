@@ -285,5 +285,59 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
   [ -n "${salida:-}" ] && printf "%s\n" "$salida" | grep -q 'AVISO' && printf "%s\n" "$salida" | grep 'AVISO' | sed "s|^|$f|"
 done
 
-[ "$fallos" -eq 0 ] && echo "Validador de workflows: $n bloque(s) \`run:\` validos, "'`if:`'" con delimitadores cerrados, actions fijadas por SHA, jobs con timeout"
+# ---------------------------------------------------------------------------
+# 6. zizmor: lo que actionlint no mira.
+#
+# POR QUE OTRA HERRAMIENTA
+# actionlint revisa que el workflow sea VALIDO; zizmor revisa que sea SEGURO.
+# Son redes distintas, y la diferencia se midio: con `persist-credentials: false`
+# puesto en 30 de 32 checkouts a mano, zizmor encontro por su cuenta el unico que
+# quedaba —el de `changed-files`, que `tj-actions/changed-files` exige— y ni
+# actionlint ni el chequeo 5 decian nada de el. Tambien cubre interpolacion de
+# `${{ }}` dentro de un `run:` y `pull_request_target` con checkout del PR, que el
+# chequeo 5 solo ve en su forma literal.
+#
+# POR QUE `--offline` EXPLICITO
+# zizmor corre sin red por defecto y lo AVISA, pero si encuentra un token hace
+# auditorias adicionales. Una puerta que cambia de alcance segun si hay token en
+# el entorno da resultados distintos en la maquina y en CI. Se fija el modo.
+#
+# POR QUE LA PUERTA ES `medium` Y NO TODO
+# Hoy los diez repos tienen 0 hallazgos `high`, asi que exigir `medium` arriba no
+# cuesta deuda y si cierra lo que importa. Lo de abajo —`self-repository` y una
+# `template-injection` de confianza baja— sale como aviso: es estilo, no riesgo, y
+# una puerta que se pone roja por estilo ensena a ignorarla.
+#
+# LAS EXCEPCIONES VAN EN EL WORKFLOW, NO EN UN NUMERO
+# zizmor acepta `# zizmor: ignore[regla]` en la linea del hallazgo. Se usa eso en
+# vez de un trinquete porque la excepcion queda junto al codigo que la necesita,
+# con el comentario que explica por que: un trinquete en 1 no dice cual es el 1.
+if ZZ=$(./scripts/traer-zizmor.sh 2>"$err") && [ -n "$ZZ" ]; then
+  # Una sola corrida para la puerta: se guarda la salida Y el codigo. Medirlos en
+  # dos invocaciones distintas es pagar el doble y, peor, poder discrepar.
+  bruto=$("$ZZ" --offline --no-progress --format plain --min-severity medium "$dir" 2>&1); codigo=$?
+  salida=$(printf '%s\n' "$bruto" | grep -vE '^ (INFO|WARN) ' || true)
+  if [ "$codigo" -ne 0 ]; then
+    echo '::error::zizmor encontro problemas de seguridad en los workflows (medium o mas).'
+    printf '%s\n' "$salida" | head -30 | sed 's/^/    /'
+    fallos=1
+  else
+    # Lo que queda debajo de la puerta se dice, para que no sea invisible.
+    # Los ceros se omiten: «quedan 0 informational 6 low» se lee mal, y un
+    # mensaje que cuesta leer se deja de leer.
+    bajos=$("$ZZ" --offline --no-progress --format plain --min-severity low "$dir" 2>&1 \
+            | grep -oE '[0-9]+ (informational|low)' | grep -vE '^0 ' | tr '\n' ', ' \
+            | sed 's/,$//; s/,/, /g' || true)
+    [ -n "$bajos" ] && echo "::notice::zizmor: sin hallazgos medium o mas. Debajo de la puerta quedan $bajos (estilo, no bloquean)."
+  fi
+else
+  echo '::warning::No se pudo traer zizmor: la sexta comprobacion NO corrio. Las otras cinco si.'
+  [ -s "$err" ] && sed 's/^/    /' "$err"
+  if grep -q 'checksum' "$err" 2>/dev/null; then
+    echo '::error::El checksum de zizmor no coincidio. Esto no es un aviso.'
+    fallos=1
+  fi
+fi
+
+[ "$fallos" -eq 0 ] && echo "Validador de workflows: $n bloque(s) \`run:\` validos, "'`if:`'" con delimitadores cerrados, actions fijadas por SHA, jobs con timeout, y zizmor sin hallazgos medium o mas"
 exit "$fallos"
