@@ -123,3 +123,10 @@ jobs:
       # cegueras del propio validador.
       - name: Arnes del validador de workflows
         run: ./scripts/arnes-workflows.sh
+
+      # El arnés del chequeo de licencias (§5.7): rompe cada caso a propósito sobre
+      # copias del lockfile y del contrato, y comprueba que falle con su mensaje. Si
+      # la lista permisiva o el formato del contrato dejan de casar, un validador
+      # ciego no falla: pasa.
+      - name: Arnés del chequeo de licencias
+        run: ./scripts/arnes-licencias.sh
