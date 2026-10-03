@@ -74,6 +74,13 @@ jobs:
 
       # Los binarios de Postgres vienen preinstalados en el runner; base-local.sh
       # los localiza. No hace falta Docker ni `supabase start`.
+      # El chequeo de puerto de `base-local.sh`: levanta su propio Postgres en un
+      # puerto aparte y comprueba que el script se niegue, en vez de matar, si el
+      # puerto lo tiene otro datadir. La aserción que importa es que el proceso
+      # ajeno siga vivo después.
+      - name: Arnés del chequeo de puerto de base-local
+        run: ./scripts/arnes-base-local.sh
+
       - name: Levantar Postgres con las migraciones
         run: npm run db:local
 
