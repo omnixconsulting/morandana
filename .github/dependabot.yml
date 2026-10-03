@@ -3,6 +3,24 @@ updates:
   - package-ecosystem: npm
     directory: "/"
     schedule: { interval: weekly, day: monday }
+    # Espera antes de proponer una version nueva. GitHub ya aplica 3 dias por
+    # omision; esto lo sube a 7 y deja la decision escrita en el repo, donde se
+    # puede revisar, en vez de colgada de un valor que GitHub puede cambiar.
+    #
+    # Por que sirve: cuando secuestran un paquete y publican una version
+    # maliciosa, la deteccion y el retiro tardan de horas a dias.
+    # `validar-cadena.sh` no lo atraparia: la version llega desde el registro y
+    # con su hash correcto.
+    #
+    # Lo que NO retrasa: las actualizaciones de seguridad. El `cooldown` solo
+    # aplica a las de version, asi que un parche de CVE sigue llegando el mismo
+    # dia.
+    #
+    # Y NO se pone en `github-actions`: la tabla de ecosistemas soportados de
+    # GitHub no lo incluye --verificado el 3-oct-2026--. Ponerlo ahi seria una
+    # clave ignorada, que es peor que nada porque parece proteccion.
+    cooldown:
+      default-days: 7
     groups:
       minor-y-patch: { update-types: [minor, patch] }
     labels: [dependencias]

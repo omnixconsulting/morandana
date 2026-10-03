@@ -27,6 +27,7 @@ trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/scripts" "$fixture/.github/workflows"
 cp "$RAIZ/scripts/validar-workflows.sh" "$fixture/scripts/"
 cp "$RAIZ/scripts/traer-actionlint.sh" "$fixture/scripts/" 2>/dev/null || true
+cp "$RAIZ/scripts/traer-zizmor.sh" "$fixture/scripts/" 2>/dev/null || true
 # actionlint se niega a correr fuera de un repositorio git: sin esto cada caso
 # fallaria por esa razon y no por el hallazgo que se busca.
 git -C "$fixture" -c init.defaultBranch=main init -q
@@ -40,7 +41,7 @@ plantar() {
   # Siempre presente: el caso valido lo invoca para probar que un job que llama
   # a un workflow reutilizable queda exento de `timeout-minutes`, que no lo
   # puede declarar.
-  printf 'name: otro\non:\n  workflow_call:\njobs:\n  otro:\n    timeout-minutes: 5\n    runs-on: ubuntu-latest\n    steps:\n      - run: true\n' > "$fixture/.github/workflows/otro.yaml"
+  printf 'name: otro\non:\n  workflow_call:\npermissions: {}\njobs:\n  otro:\n    timeout-minutes: 5\n    runs-on: ubuntu-latest\n    steps:\n      - run: true\n' > "$fixture/.github/workflows/otro.yaml"
   if [ "$nombre" = "DEPENDABOT" ]; then
     printf '%s\n' "$contenido" > "$fixture/.github/dependabot.yaml"
     printf 'name: v\non:\n  pull_request:\njobs:\n  v:\n    timeout-minutes: 5\n    runs-on: ubuntu-latest\n    steps:\n      - run: true\n' > "$fixture/.github/workflows/valido.yml"
@@ -73,18 +74,60 @@ plantar valido.yml VERDE <<YAML
 name: valido
 on:
   pull_request:
+# Sin esto zizmor marca `excessive-permissions` (medium) y el caso dejaria de
+# estar en verde por una razon que no es la que mide.
+permissions:
+  contents: read
 jobs:
   uno:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
+      # `persist-credentials: false` no es decoracion del fixture: sin el, zizmor
+      # marca `artipacked` (medium) y este caso dejaria de estar en verde. El
+      # propio estandar lo exige en los 32 checkouts del portafolio.
       - uses: actions/checkout@$SHA # v5
+        with:
+          persist-credentials: false
       - run: |
           if [ -n "\$HOME" ]; then
             echo hola
           fi
   llama-reutilizable:
     uses: ./.github/workflows/otro.yaml
+YAML
+
+plantar zizmor-artipacked.yml 'artipacked' <<YAML
+# Un checkout que persiste el token en .git/config. actionlint no dice nada y el
+# chequeo 5 tampoco: es la red que agrega zizmor.
+name: credencial persistida
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  uno:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@$SHA # v5
+YAML
+
+plantar zizmor-ignorado.yml VERDE <<YAML
+# El mismo hallazgo, con la excepcion declarada en su linea. Prueba que la via de
+# escape funciona: sin ella, la unica salida para una excepcion legitima
+# --`tj-actions/changed-files` exige el token-- seria apagar el chequeo entero.
+name: credencial persistida pero declarada
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  uno:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@$SHA # v5 # zizmor: ignore[artipacked]
 YAML
 
 plantar sin-sha.yml 'no va fijada por un SHA' <<YAML
