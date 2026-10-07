@@ -1,11 +1,25 @@
 name: CodeQL
 # Repo privado en plan Free: sin Code Scanning en GitHub. Se analiza igual, el SARIF
 # se guarda como artefacto y el job falla si hay hallazgos (error/warning).
+#
+# NO corre en push a main, a propósito: este repo fusiona con SQUASH, así que el
+# commit que cae en main tiene el contenido exacto que ya se analizó en el PR y
+# la segunda corrida no aportaba nada, solo minutos de Actions. El cron semanal
+# queda de red para cualquier cosa que entrara sin pasar por un PR (oct-2026).
 on:
-  push: { branches: [main] }
   pull_request:
+    # Un cambio de documentación no tiene código que analizar. `merge-gatekeeper`
+    # solo espera checks que reportaron, así que no dispararse aquí no cuelga la
+    # Puerta 2: simplemente no aparece.
+    paths-ignore:
+      - '**/*.md'
   schedule: [{ cron: '0 9 * * 1' }]
 permissions: { actions: read, contents: read }
+# Sin esto, cada push a una rama arrancaba un análisis de 3 min y el anterior
+# seguía vivo hasta terminar, aunque ya no le importara a nadie.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   analyze:
     runs-on: ubuntu-latest
