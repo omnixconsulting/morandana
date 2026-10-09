@@ -103,6 +103,74 @@ AYUDA
 fi
 
 
+# --- Candado, antes de tocar el datadir ---------------------------------------
+#
+# DOS CORRIDAS A LA VEZ SE DESTRUYEN ENTRE SÍ. Sin candado, una hace `mkdir` de
+# `pg_wal` mientras la otra está vaciando el directorio, y el resultado son
+# estos dos errores --reproducidos el 8-oct-2026 lanzando dos invocaciones
+# simultáneas--:
+#
+#   initdb: error: could not create directory ".../pg_wal": File exists
+#   PANIC:  could not create file "global/pg_control": No such file or directory
+#
+# Ninguno de los dos menciona la concurrencia, y el `pgdata` queda corrupto:
+# de ahí en adelante TODA corrida falla con «exists but is not empty», que
+# tampoco dice que sea basura de una corrida abortada. Costó media hora
+# diagnosticarlo creyendo que era un problema de worktrees.
+#
+# `mkdir` es la primitiva atómica aquí: o la crea este proceso, o ya existía.
+# No se usa `flock`, que en macOS no viene de serie.
+LOCK="$PGDATA.lock"
+ESPERA="${BASE_LOCAL_ESPERA:-90}"   # segundos; 0 = no esperar
+mkdir -p "$(dirname "$LOCK")"
+
+# ESPERA EN VEZ DE FALLAR AL INSTANTE, y la razón salió de usarlo.
+#
+# La primera versión abortaba en cuanto encontraba el candado puesto. Eso
+# convirtió una carrera que antes era silenciosa --y destructiva-- en un bloqueo
+# duro: el hook de pre-commit puede lanzar la puerta dos veces, y la segunda
+# moría sin remedio aunque la primera fuera a terminar en segundos. Un candado
+# que no espera no serializa: solo mueve el problema.
+#
+# Ahora espera hasta $ESPERA segundos. Si el dueño termina, entra. Si no, falla
+# con el mismo mensaje, que sigue siendo el caso que hay que poder ver.
+inicio=$SECONDS
+while :; do
+  if mkdir "$LOCK" 2>/dev/null; then
+    echo $$ > "$LOCK/pid"
+    break
+  fi
+  DUENO="$(cat "$LOCK/pid" 2>/dev/null || echo '')"
+  # Candado huérfano: su dueño ya no existe. Se toma sin esperar.
+  if [ -z "$DUENO" ] || ! kill -0 "$DUENO" 2>/dev/null; then
+    echo "→ candado huérfano de un proceso muerto; se reutiliza"
+    rm -rf "$LOCK"
+    continue
+  fi
+  if [ $((SECONDS - inicio)) -ge "$ESPERA" ]; then
+    cat >&2 <<AYUDA
+::error::Otra corrida de base-local lleva más de ${ESPERA}s levantando esta base (PID $DUENO).
+  Dos a la vez corrompen el datadir, así que ésta no sigue. Si ese proceso
+  quedó colgado, mátalo y borra el candado:
+      rm -rf "$LOCK"
+AYUDA
+    exit 1
+  fi
+  [ $((SECONDS - inicio)) -eq 0 ] && echo "→ otra corrida tiene el candado (PID $DUENO); esperando…"
+  sleep 1
+done
+trap 'rm -rf "$LOCK"' EXIT
+
+# --- Residuo de una corrida abortada ------------------------------------------
+#
+# Un `pgdata` sin `base/` ni `PG_VERSION` no es una base: es lo que deja un
+# initdb que se murió a medias. initdb se niega a escribir ahí con «exists but
+# is not empty», un mensaje que no sugiere la salida. Se detecta y se dice.
+if [ -d "$PGDATA" ] && [ ! -d "$PGDATA/base" ] && [ -n "$(ls -A "$PGDATA" 2>/dev/null)" ]; then
+  echo "→ $PGDATA tiene restos de una corrida abortada (sin base/); se limpia"
+  rm -rf "${PGDATA:?}"
+fi
+
 if [ ! -d "$PGDATA/base" ]; then
   echo "→ initdb en $PGDATA"
   mkdir -p "$PGDATA"

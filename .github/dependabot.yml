@@ -44,3 +44,9 @@ updates:
     directory: "/"
     schedule: { interval: monthly }
     labels: [dependencias]
+    groups:
+      # init y analyze tienen que ir en la misma versión: con una mezclada,
+      # analyze falla con «Loaded a configuration file for version…». Dos PR
+      # separados nunca pasan solos.
+      codeql-action:
+        patterns: ["github/codeql-action/*"]
