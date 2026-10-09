@@ -127,6 +127,13 @@ jobs:
       - name: Arnés del chequeo de puerto de base-local
         run: ./scripts/arnes-base-local.sh
 
+      # El arnés de CONCURRENCIA, que es otro agujero: dos invocaciones a la vez
+      # se destruían entre sí y dejaban el datadir corrupto, con dos errores que
+      # no mencionan la concurrencia. El del puerto no lo cubría. Usa un PGDATA
+      # y un puerto temporales.
+      - name: Arnés de concurrencia de base-local
+        run: ./scripts/arnes-base-local-concurrencia.sh
+
       - name: Levantar Postgres con las migraciones
         run: npm run db:local
 
