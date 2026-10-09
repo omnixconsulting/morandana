@@ -27,9 +27,52 @@ set -euo pipefail
 export LC_ALL="${LC_ALL:-C}"
 export LANG="${LANG:-C}"
 
-PUERTO="${PGPUERTO:-55434}"
 DB="${DB:-morandana}"
+
+# El puerto BASE de este repo. Va en pares entre repos hermanos para no gastar
+# puertos: solo uno de cada par puede estar arriba a la vez, y la guardia de
+# más abajo se niega a tocar el Postgres del hermano.
+PUERTO_BASE=55434
+
+# --- UN PUERTO POR ÁRBOL DE TRABAJO, NO POR REPO ------------------------------
+#
+# El `pgdata` siempre fue por árbol de trabajo —vive dentro del árbol— pero el
+# puerto era del repo. Resultado: un worktree y su checkout principal levantaban
+# DOS Postgres distintos peleando por el mismo puerto, y el que llegaba segundo
+# terminaba hablándole a la base del primero. La guardia de puerto, de paso,
+# veía al hermano como «de otro repo» y mandaba a apagarlo «desde SU repo», que
+# era el mismo. Diagnosticado el 9-oct-2026.
+#
+# El checkout principal conserva el puerto documentado, para no romper lo que
+# ya está escrito ni los `*_DB_URL=…` que la gente tenga a mano. Un worktree
+# enlazado toma uno derivado de SU ruta, en un rango alto que no toca el bloque
+# 5543x de los repos.
+#
+# `--git-dir` y `--git-common-dir` solo difieren en un worktree enlazado: es la
+# forma barata de distinguirlos, sin depender de la ruta ni de convenciones.
+puerto_del_arbol() {
+  local comun propio h
+  comun="$(git -C "$RAIZ" rev-parse --git-common-dir 2>/dev/null)" || { echo "$PUERTO_BASE"; return; }
+  propio="$(git -C "$RAIZ" rev-parse --git-dir 2>/dev/null)"       || { echo "$PUERTO_BASE"; return; }
+  [ "$comun" = "$propio" ] && { echo "$PUERTO_BASE"; return; }   # checkout principal
+  # `cksum` es POSIX y da el mismo número en cada corrida: el puerto de un
+  # worktree no puede cambiar entre invocaciones o `--stop` no encontraría nada.
+  h="$(printf '%s' "$RAIZ" | cksum | awk '{print $1}')"
+  echo $(( 55500 + h % 400 ))
+}
+
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Después de RAIZ y atado a ella: un `git rev-parse` a secas miraría el cwd, y
+# este script se invoca desde cualquier lado.
+PUERTO="${PGPUERTO:-$(puerto_del_arbol)}"
+
+# `--puerto` imprime el puerto de ESTE árbol y sale. Va aquí arriba, antes de
+# buscar los binarios de Postgres: preguntar el puerto no necesita Postgres
+# instalado, y el arnés lo pregunta en vez de recalcularlo —una copia del
+# cálculo en la prueba haría que la prueba pase aunque el script se equivoque—.
+# De paso contesta «¿en qué puerto quedó mi worktree?» sin leer el código.
+if [ "${1:-}" = "--puerto" ]; then echo "$PUERTO"; exit 0; fi
 
 if [ -x /opt/homebrew/opt/postgresql@17/bin/pg_ctl ]; then
   BIN=/opt/homebrew/opt/postgresql@17/bin

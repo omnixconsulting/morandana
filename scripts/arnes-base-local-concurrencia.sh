@@ -129,10 +129,68 @@ else
 fi
 apagar
 
+# --- un puerto por arbol de trabajo, no por repo -----------------------------
+#
+# El pgdata siempre fue por worktree, pero el puerto era del repo: un worktree y
+# su checkout principal levantaban DOS Postgres peleando por el mismo puerto, y
+# el segundo terminaba hablandole a la base del primero.
+#
+# Se monta un repo de JUGUETE con su worktree en $TMP y se le pregunta el puerto
+# a cada arbol. Hermetico a proposito: comparar contra el checkout principal de
+# verdad (a) no corre en CI, donde no hay worktree, (b) depende de la forma del
+# Mac de quien lo corra y (c) ejecuta el base-local.sh de OTRA rama, que puede
+# arrancar un Postgres que nadie pidio. Aqui solo se pregunta, nada arranca.
+echo
+echo 'Arnes del puerto por arbol de trabajo:'
+
+# Se le PREGUNTA al script (`--puerto`), no se recalcula: una copia del calculo
+# aqui haria que la prueba pase aunque el script se equivoque.
+puerto_de() { ( cd "$1" && PGPUERTO= PGDATA= ./scripts/base-local.sh --puerto 2>/dev/null ); }
+
+REPO="$TMP/repo"
+mkdir -p "$REPO/scripts"
+cp ./scripts/base-local.sh "$REPO/scripts/base-local.sh"
+git -C "$REPO" init -q
+git -C "$REPO" -c user.email=a@b -c user.name=a commit -q --allow-empty -m x
+git -C "$REPO" worktree add -q "$TMP/arbol" -b rama-de-prueba >/dev/null 2>&1
+mkdir -p "$TMP/arbol/scripts"
+cp ./scripts/base-local.sh "$TMP/arbol/scripts/base-local.sh"
+
+base=$(grep -m1 '^PUERTO_BASE=' ./scripts/base-local.sh | cut -d= -f2)
+p_principal="$(puerto_de "$REPO")"
+p_arbol="$(puerto_de "$TMP/arbol")"
+
+# a) el checkout principal conserva el puerto documentado. Es la promesa que
+#    protege los `*_DB_URL=` que la gente ya tiene a mano.
+if [ "$p_principal" = "$base" ]; then
+  echo "  ok   el checkout principal conserva su puerto documentado ($base)"
+else
+  echo "  MAL  el principal deberia dar $base y dio '$p_principal'"
+  fallos=1
+fi
+
+# b) el worktree toma otro. Esta es la asercion que sale roja si alguien
+#    devuelve `puerto_del_arbol` a un `echo $PUERTO_BASE` incondicional.
+if [ -n "$p_arbol" ] && [ "$p_arbol" != "$p_principal" ]; then
+  echo "  ok   el worktree toma otro puerto ($p_arbol), no el del repo"
+else
+  echo "  MAL  worktree='$p_arbol' principal='$p_principal' — comparten puerto"
+  fallos=1
+fi
+
+# c) y ese puerto es ESTABLE entre invocaciones. Sin esto, `--stop` buscaria en
+#    un puerto distinto al que arranco y dejaria el postmaster vivo.
+if [ "$(puerto_de "$TMP/arbol")" = "$p_arbol" ]; then
+  echo '  ok   el puerto del worktree no cambia entre invocaciones'
+else
+  echo '  MAL  el puerto del worktree cambia entre corridas; --stop no lo hallaria'
+  fallos=1
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo 'Arnes de concurrencia: el candado aguanta.'
+  echo 'Arnes de base-local: el candado aguanta y cada arbol tiene su puerto.'
 else
-  echo '::error::base-local puede corromper su datadir con dos corridas a la vez.'
+  echo '::error::base-local puede corromper su datadir, o dos arboles se pelean un puerto.'
 fi
 exit "$fallos"

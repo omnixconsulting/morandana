@@ -4,7 +4,12 @@
 #   ./scripts/base-local.sh && ./scripts/test-db.sh
 set -euo pipefail
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-URL="${MORANDANA_DB_URL:-postgresql://postgres@localhost:${PGPUERTO:-55434}/${DB:-morandana}}"
+# El puerto NO se escribe aquí. Lo dice `base-local.sh --puerto`, porque desde
+# el 9-oct-2026 cada árbol de trabajo tiene el suyo: un 55434 a mano aquí
+# mandaría las pruebas de un worktree contra la base del checkout principal
+# —que es exactamente el bug que el puerto por árbol vino a cerrar, movido un
+# paso abajo—.
+URL="${MORANDANA_DB_URL:-postgresql://postgres@localhost:${PGPUERTO:-$("$RAIZ"/scripts/base-local.sh --puerto)}/${DB:-morandana}}"
 # Sin esto, un glob que no encuentra nada recorre cero archivos y el script
 # termina anunciando "todas pasan" sin haber probado nada. Es justo el falso
 # verde que estas pruebas existen para evitar.
