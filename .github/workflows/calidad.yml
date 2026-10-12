@@ -112,6 +112,15 @@ jobs:
       - name: Arnés del chequeo de licencias
         run: ./scripts/arnes-licencias.sh
 
+      # El arnés del detector de deriva de migraciones. Corre desde el
+      # 12-oct-2026: el detector entró el 3-oct y su arnés nunca estuvo en una
+      # puerta, así que cuando el CLI de Supabase dejó de emitir JSON por
+      # omisión el detector quedó inservible y el arnés seguía pasando a mano
+      # sin tocar la línea rota. Es de fixtures y de un CLI de mentira en el
+      # PATH: no toca Supabase ni la red.
+      - name: Arnés del detector de deriva
+        run: ./scripts/arnes-deriva.sh
+
       # ── Capa L2: las políticas RLS contra un Postgres real ──
       # El sitio entero habla con Supabase por la llave `anon`, que viaja en el
       # bundle del navegador, así que RLS es lo único que separa a un visitante
