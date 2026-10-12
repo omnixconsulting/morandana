@@ -38,9 +38,36 @@ else
     echo '  `supabase link --project-ref <ref>` y vuelve a correrlo.'
     exit 1
   fi
-  salida=$(supabase migration list --linked 2>/dev/null | grep -o '{"migrations":.*}')
+  # `--output-format json` ES OBLIGATORIO DESDE EL CLI 2.11x
+  #
+  # Hasta la 2.109 este comando emitia JSON por omision. Despues pasa a imprimir
+  # una tabla, el `grep` de abajo no encuentra nada y el detector reporta «el
+  # chequeo NO corrio»: falla ruidoso, que es lo correcto, pero quedo inservible
+  # sin que nadie lo notara hasta el 8-oct-2026 --justo cuando se necesitaba
+  # para decidir si aplicar cuatro migraciones--.
+  #
+  # La forma del JSON NO cambio: sigue siendo {"migrations":[{local,remote,time}]}.
+  # Lo que cambio fue el default. Por eso el arnes de parseo seguia en verde: la
+  # unica linea rota era esta, y era la unica que no cubria.
+  #
+  # El stderr se guarda en vez de tirarse, para que el mensaje de error pueda
+  # decir QUE paso en lugar de solo que algo paso.
+  errores=$(mktemp); trap 'rm -f "$errores"' EXIT
+  crudo=$(supabase migration list --linked --output-format json 2>"$errores")
+  salida=$(printf '%s' "$crudo" | grep -o '{"migrations":.*}')
   if [ -z "$salida" ]; then
     echo '::error::No se pudo leer el estado de produccion. El chequeo NO corrio.'
+    echo '  No es lo mismo que «sin deriva»: puede haber migraciones sin aplicar.'
+    if [ -n "$crudo" ]; then
+      echo '  El CLI contesto algo que no es el JSON esperado. Si cambio su formato de'
+      echo '  salida otra vez, la bandera `--output-format json` de este script es lo'
+      echo '  primero que hay que revisar. Primera linea de lo que devolvio:'
+      printf '%s\n' "$crudo" | head -1 | sed 's/^/    /'
+    fi
+    if [ -s "$errores" ]; then
+      echo '  stderr del CLI:'
+      sed 's/^/    /' "$errores"
+    fi
     exit 1
   fi
 fi
