@@ -115,10 +115,19 @@ jobs:
           header: pr-comoprobar
           delete: true
 
-      - uses: upsidr/merge-gatekeeper@09af7a82c1666d0e64d2bd8c01797a0bcfd3bb5d # v1.2.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # `self` debe coincidir con el `name:` del job, o se esperaria a si mismo.
-          self: Gatekeeper
-          timeout: 900
-          interval: 20
+      # AQUI VIVIA `upsidr/merge-gatekeeper`, Y SE FUE POR LO QUE COSTABA
+      #
+      # Su trabajo era esperar a que los demas checks terminaran, para que la
+      # proteccion de rama pudiera exigir UN solo nombre en vez de enumerarlos.
+      # Medido el 12-oct-2026 sobre los 8 repos: 959 min cada 10 dias, 360
+      # corridas a 2.66 min. De cada corrida tipica de 205 s:
+      #
+      #   ~180 s  un job sentado puliendo la API de Checks
+      #   ~22 s   GitHub construyendo la imagen Docker del action, cada vez
+      #   ~5 s    el trabajo util: titulo y cuerpo
+      #
+      # Ahora la proteccion de rama exige los checks POR NOMBRE, y este job
+      # vuelve a durar segundos. El riesgo de enumerar --renombrar un check lo
+      # deja de exigir en silencio-- lo cubre
+      # `scripts/validar-checks-requeridos.sh` contra
+      # `contracts/checks-requeridos.txt`, en los dos sentidos.

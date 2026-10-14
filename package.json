@@ -18,9 +18,10 @@
     "db:test": "./scripts/test-db.sh",
     "workflows": "./scripts/validar-workflows.sh",
     "env": "./scripts/validar-env.sh",
-    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run pii && npm run cadena && npm run cabeceras && npm run build && npm run workflows && npm run env",
+    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run pii && npm run cadena && npm run cabeceras && npm run build && npm run workflows && npm run checks && npm run env",
     "prepare": "husky || true",
-    "commitlint": "commitlint"
+    "commitlint": "commitlint",
+    "checks": "./scripts/validar-checks-requeridos.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
