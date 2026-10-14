@@ -125,8 +125,30 @@ if AL=$(./scripts/traer-actionlint.sh 2>"$err") && [ -n "$AL" ]; then
     printf '%s\n' "$salida" | head -20 | sed 's/^/    /'
     fallos=1
   fi
-  command -v shellcheck >/dev/null 2>&1 \
-    || echo '::notice::shellcheck no esta instalado: actionlint se salta el analisis del shell. Lo cubre el chequeo 2 con bash -n.'
+  # SHELLCHECK AUSENTE: aviso en local, ERROR en CI.
+  #
+  # actionlint delega el shell a shellcheck y, si no esta, se lo salta EN
+  # SILENCIO. Mientras eso fue solo un `::notice::` en los dos lados, la
+  # cobertura del shell dependia de la maquina de quien commitea, y un
+  # `::notice::` es facil de pasar por alto: asi se colo en jerrymedrano un
+  # SC2016 --acentos graves de markdown dentro de comillas simples, que son
+  # sustitucion de comando para shellcheck-- y asi sobrevivio en el `main` de
+  # medicarmen un SC2046 desde el 13-oct-2026. Dos medias comprobaciones en
+  # verde, cero cobertura.
+  #
+  # En CI no se tolera: la imagen de `ubuntu-latest` trae shellcheck, asi que si
+  # falta es que algo cambio en el runner, y enterarse por un aviso que nadie lee
+  # es como no enterarse. En local sigue siendo aviso: no se le va a pedir a nadie
+  # que instale shellcheck para abrir un PR --el chequeo 2 cubre la sintaxis con
+  # `bash -n`, y CI cubre el resto--.
+  if ! command -v shellcheck >/dev/null 2>&1; then
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo '::error::shellcheck no esta instalado y esto es CI: actionlint se saltaria el analisis del shell, que es justo lo que este chequeo viene a cubrir.'
+      fallos=1
+    else
+      echo '::notice::shellcheck no esta instalado: actionlint se salta el analisis del shell. Lo cubre el chequeo 2 con bash -n, y CI lo corre de verdad --ahi faltar es un error--.'
+    fi
+  fi
 else
   echo '::warning::No se pudo traer actionlint: la tercera comprobacion NO corrio. Los `if:` y los `run:` si se revisaron.'
   [ -s "$err" ] && sed 's/^/    /' "$err"
