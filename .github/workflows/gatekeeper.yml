@@ -63,10 +63,15 @@ jobs:
       - name: Seccion «Como probarlo»
         id: comoprobar
         env:
-          # El cuerpo es entrada NO CONFIABLE y va por env a proposito. Interpolar
-          # ${{ github.event.pull_request.body }} dentro del script permitiria que
-          # un PR inyectara comandos en el runner.
-          CUERPO: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Este job NO hace checkout --no le hace falta--, asi que `gh` no tiene
+          # de donde deducir el repo. `GH_REPO` se lo dice sin meter una expresion
+          # al script.
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          # `dependabot[bot]` es el UNICO autor cuyo cuerpo lo escribe otro job de
+          # esta misma corrida, asi que es el unico que necesita espera.
+          AUTOR: ${{ github.event.pull_request.user.login }}
         run: |
           # El encabezado se ancla en «probarlo» y no en «Como probarlo»: la tilde
           # de «Como» es multibyte y una clase [oa] no casa de forma fiable en el
@@ -77,6 +82,44 @@ jobs:
             echo "::error::$1"
             exit 1
           }
+          # EL CUERPO SE LEE VIVO, NO DEL PAYLOAD DEL EVENTO
+          #
+          # Antes el cuerpo entraba por env desde la expresion `pull_request.body`
+          # del evento, que es una FOTO del cuerpo al momento de disparar la
+          # corrida --el literal de esa expresion no se escribe aqui a proposito:
+          # actionlint y zizmor lo marcan aunque este en un comentario, y tienen
+          # razon, porque para ellos un comentario no se distingue del codigo--.
+          # Esa foto hacia imposible que `dependabot-como-probarlo.yml` sirviera
+          # de algo: ese job pega la seccion unos segundos despues del disparo, y
+          # este paso seguia leyendo el cuerpo de antes. Verificado en meridian-crm
+          # con su PR #109: el pegado paso a las 20:46:55 y este paso dijo «falta
+          # la seccion» a las 20:47:19, con la seccion YA en el cuerpo.
+          #
+          # Y no hay salida por el lado del evento: Gatekeeper si escucha `edited`,
+          # pero **una edicion hecha con GITHUB_TOKEN no dispara workflows** --regla
+          # de GitHub contra la recursion-- y un PR de Dependabot no puede leer
+          # secretos, asi que un PAT tampoco es opcion. Leer vivo es el unico camino.
+          #
+          # El cuerpo sigue siendo entrada NO CONFIABLE: entra a una variable de
+          # shell y nunca se interpola en el script. Esto es mas seguro que antes,
+          # no menos: ya no entra NINGUNA expresion con contenido del PR a este
+          # script, ni por env.
+          cuerpo_vivo() { gh pr view "$PR" --json body --jq '.body // ""'; }
+          CUERPO=$(cuerpo_vivo)
+
+          # La espera: el pegado tarda ~8 s y este paso puede empezar antes. Solo
+          # para Dependabot, para que un PR humano sin seccion falle al instante.
+          if [ "$AUTOR" = 'dependabot[bot]' ]; then
+            intento=0
+            until printf '%s' "$CUERPO" | grep -qE "$ENC"; do
+              intento=$((intento + 1))
+              [ "$intento" -gt 9 ] && break
+              echo "  esperando a que el pegado escriba la seccion ($intento/9)..."
+              sleep 5
+              CUERPO=$(cuerpo_vivo)
+            done
+          fi
+
           printf '%s' "$CUERPO" | grep -qE "$ENC" \
             || falla 'Falta la seccion «## Como probarlo» en el cuerpo del PR.'
           seccion=$(printf '%s' "$CUERPO" | awk -v enc="$ENC" '

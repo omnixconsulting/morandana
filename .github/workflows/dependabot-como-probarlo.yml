@@ -1,0 +1,102 @@
+name: Como probarlo de Dependabot
+# Le pega a los PR de Dependabot la seccion «Como probarlo» que Gatekeeper exige.
+#
+# POR QUE EXISTE
+# El paso «Seccion Como probarlo» de gatekeeper.yml rechaza todo PR que no diga
+# como ejercitar el cambio a mano. Dependabot no escribe esa seccion y no se le
+# puede pedir, asi que hasta el 14-oct-2026 NINGUNA actualizacion de
+# dependencias podia fusionarse aqui: el #35 llevaba once dias en rojo y el #39
+# cinco, los dos con el resto de los checks en verde.
+#
+# La salida facil era eximir al bot del paso. No se tomo: la pregunta «como se
+# comprueba que esto no rompio nada» tiene respuesta para un bump, y es distinta
+# de la de un cambio de codigo. Lo que no tiene sentido es pedirsela al bot. Asi
+# que la respuesta vive versionada en .github/plantillas/, donde se revisa en un
+# diff como cualquier otra puerta, y esto solo la pega.
+#
+# POR QUE pull_request BASTA, Y NO HACE FALTA pull_request_target
+# La creencia comun es que una corrida disparada por Dependabot recibe un
+# GITHUB_TOKEN de solo lectura pase lo que pase, y que por eso editar el cuerpo
+# obliga a `pull_request_target` --un disparador que zizmor marca como ALTO--.
+# No es cierto, y se verifico en el log de meridian-crm antes de portarlo: la
+# corrida de Gatekeeper del 8-oct-2026 sobre su PR #60, que es de Dependabot,
+# imprime
+#
+#   GITHUB_TOKEN Permissions
+#   Checks: read · Metadata: read · PullRequests: write · Statuses: read
+#
+# o sea el bloque `permissions:` se respeta. Asi que esto corre en el evento
+# normal, sin el disparador peligroso y sin suprimir un hallazgo alto.
+# Si algun dia un PR de Dependabot falla aqui con un 403 al editar, ESO es lo
+# que cambio, y la salida NO es pasarse a `pull_request_target` sin volver a
+# mirar el log: es volver a leerlo.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+# UN BLOQUE `permissions:` REEMPLAZA EL CONJUNTO, NO LO AMPLIA
+#
+# En meridian-crm esto decia solo `{ pull-requests: write }`, y eso dejaba al
+# token SIN `contents: read`. El `checkout` de abajo entonces no podia leer un
+# repo privado y moria con
+#
+#   fatal: repository 'https://github.com/omnixconsulting/meridian-crm/' not found
+#
+# --un mensaje que suena a repo borrado y es un permiso que falta--. El job
+# quedo rojo en todo PR de Dependabot desde que se escribio, o sea nunca pego
+# nada: el unico sintoma era un Gatekeeper rojo por falta de «Como probarlo»,
+# que es exactamente lo que este workflow existe para evitar.
+#
+# `contents: read` es el minimo: lee las plantillas y nada mas. No se ejecuta
+# nada del PR.
+permissions: { contents: read, pull-requests: write }
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  pegar:
+    name: Pegar «Como probarlo»
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Solo para leer las plantillas. No se ejecuta NADA del PR: ni npm ci, ni
+      # build, ni scripts. Lo unico que sale del PR son metadatos.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Elegir plantilla y pegarla
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Metadatos del PR, por env y no interpolados en el script: el nombre
+          # de una rama es entrada no confiable aunque venga de Dependabot.
+          # Interpolar ${{ … }} dentro del `run` deja inyectar comandos.
+          PR: ${{ github.event.pull_request.number }}
+          RAMA: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          case "$RAMA" in
+            dependabot/github_actions/*) plantilla=.github/plantillas/como-probarlo-actions.md ;;
+            *)                           plantilla=.github/plantillas/como-probarlo-npm.md ;;
+          esac
+          [ -f "$plantilla" ] || { echo "::error::Falta $plantilla"; exit 1; }
+          echo "Plantilla: $plantilla"
+
+          cuerpo="$(gh pr view "$PR" --repo "$REPO" --json body --jq .body)"
+
+          # Idempotente: `synchronize` dispara en cada push del bot, y pegar la
+          # seccion dos veces deja un cuerpo que crece solo.
+          if printf '%s' "$cuerpo" | grep -qiE '^[[:space:]]*#{1,6}[[:space:]].*robarlo[[:space:]]*$'; then
+            echo 'El cuerpo ya trae la seccion. No se toca.'
+            exit 0
+          fi
+
+          { printf '%s\n\n---\n\n' "$cuerpo"; cat "$plantilla"; } > /tmp/cuerpo.md
+          gh pr edit "$PR" --repo "$REPO" --body-file /tmp/cuerpo.md
+          # Esta edicion NO vuelve a disparar Gatekeeper: la hace GITHUB_TOKEN y
+          # GitHub no encadena workflows con su propio token. Por eso el paso de
+          # Gatekeeper lee el cuerpo VIVO y espera, en vez de confiar en `edited`.
+          echo 'Seccion pegada. Gatekeeper la lee en vivo en la corrida que ya esta en curso.'
