@@ -1,0 +1,39 @@
+# Los checks que la proteccion de rama de `main` tiene que exigir, uno por linea.
+#
+# POR QUE SE CONGELA
+# Hasta el 12-oct-2026 la proteccion exigia UN solo nombre, `Gatekeeper`, y ese
+# job esperaba a los demas para agregarlos. Enumerar era mas barato pero mas
+# fragil, y la razon estaba escrita en el §12 del estandar: **un check requerido
+# que no aparece bloquea el PR para siempre**, y uno que se renombra deja de
+# exigirse EN SILENCIO. Las dos direcciones fallan calladas.
+#
+# Lo que cambio es el precio de la alternativa. Medido sobre los 8 repos, 2-12
+# oct: `Gatekeeper` se llevaba 959 min cada 10 dias en 360 corridas, y de cada
+# corrida de 205 s unos 180 eran el job sentado esperando y 22 construyendo una
+# imagen Docker. El trabajo util eran 5 segundos. Bajar al piso de 1 min por
+# corrida ahorra ~1,800 min al mes.
+#
+# Asi que se enumera, y la fragilidad se vuelve una puerta:
+# `scripts/validar-checks-requeridos.sh` compara este archivo contra lo que la
+# proteccion exige DE VERDAD y contra los nombres de job de los workflows, en
+# las dos direcciones. La comparacion contra la proteccion corre en la Puerta 1
+# y no en CI, porque `GITHUB_TOKEN` no puede leerla: `administration` no existe
+# como scope de ese token. La otra mitad --que cada nombre exista como job-- si
+# corre en CI, y es la que atrapa el caso que bloquea PRs: un nombre que no
+# exista en ningun workflow de `pull_request` es un check requerido que nunca
+# aparece.
+#
+# UN CHECK SOLO SE PUEDE EXIGIR SI SIEMPRE APARECE
+# Esa es la regla que decide que entra. Por eso NO estan aqui:
+#
+#   Pegar «Como probarlo»  - solo corre en PR de dependabot[bot]
+#   Vercel, Vercel Preview Comments - los publica la integracion de Vercel, no
+#                            Actions, y no en todo PR
+#
+# Y por eso `codeql.yml` perdio su `paths-ignore` el mismo dia: con el filtro, un
+# PR de solo documentacion no producia `analyze` y lo habria bloqueado para
+# siempre. El salto ahora vive adentro del job, que reporta igual.
+#
+Gatekeeper
+Lint, tipos, secretos, build y RLS
+analyze

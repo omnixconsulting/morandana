@@ -7,14 +7,22 @@ name: CodeQL
 # la segunda corrida no aportaba nada, solo minutos de Actions. El cron semanal
 # queda de red para cualquier cosa que entrara sin pasar por un PR (oct-2026).
 on:
+  # SIN `paths-ignore`, A PROPOSITO (13-oct-2026)
+  #
+  # Al pasar a exigir los checks POR NOMBRE, un filtro de rutas se volvio
+  # inviable: un check requerido que NO aparece bloquea el PR para siempre.
+  # (Un job SALTADO por un `if:` si reporta y cuenta como aprobado; un workflow
+  # que no se dispara, no. Esa es la diferencia.)
+  #
+  # Y medido, el filtro no compraba casi nada: salvo 1 de 37 ramas en 10 dias,
+  # porque un PR de documentacion de esta casa casi siempre toca tambien
+  # scripts o workflows.
+  #
+  # El ahorro vive ADENTRO del job: si el PR no trae codigo, reporta verde en
+  # segundos sin bajar CodeQL.
   pull_request:
-    # Un cambio de documentación no tiene código que analizar. `merge-gatekeeper`
-    # solo espera checks que reportaron, así que no dispararse aquí no cuelga la
-    # Puerta 2: simplemente no aparece.
-    paths-ignore:
-      - '**/*.md'
   schedule: [{ cron: '0 9 * * 1' }]
-permissions: { actions: read, contents: read }
+permissions: { actions: read, contents: read, pull-requests: read }
 # Sin esto, cada push a una rama arrancaba un análisis de 3 min y el anterior
 # seguía vivo hasta terminar, aunque ya no le importara a nadie.
 concurrency:
@@ -25,16 +33,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Se pregunta por la API, antes del checkout: un PR de solo documentacion no
+      # baja el repo ni el bundle de CodeQL. En el cron no hay PR, y entonces se
+      # analiza siempre.
+      - name: ¿El PR trae codigo?
+        id: codigo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -z "${PR:-}" ]; then
+            echo 'hay=si' >> "$GITHUB_OUTPUT"
+            echo 'Sin PR (cron): se analiza.'
+            exit 0
+          fi
+          n=$(gh api "/repos/$GH_REPO/pulls/$PR/files" --paginate -q '.[].filename' \
+                | grep -vcE '\.md$' || true)
+          if [ "${n:-0}" -gt 0 ]; then
+            echo 'hay=si' >> "$GITHUB_OUTPUT"; echo "$n archivo(s) que no son .md: se analiza."
+          else
+            echo 'hay=no' >> "$GITHUB_OUTPUT"; echo 'Solo documentacion: nada que analizar.'
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.codigo.outputs.hay == 'si'
         with:
           persist-credentials: false
       - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        if: steps.codigo.outputs.hay == 'si'
         with: { languages: javascript-typescript }
       - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        if: steps.codigo.outputs.hay == 'si'
         with: { upload: never, output: sarif }
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.codigo.outputs.hay == 'si'
         with: { name: codeql-sarif, path: sarif, retention-days: 30 }
       - name: Fallar si hay hallazgos
+        if: steps.codigo.outputs.hay == 'si'
         run: |
           n=$(jq '[.runs[].results[] | select((.level // "warning") != "note")] | length' sarif/*.sarif | paste -sd+ - | bc)
           echo "hallazgos: $n"

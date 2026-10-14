@@ -71,6 +71,25 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Los checks que la proteccion de rama exige, contra el contrato. Desde el
+      # 13-oct-2026 se enumeran por nombre: el agregador que los esperaba en un
+      # runner costaba ~1,800 min de Actions al mes.
+      #
+      # AQUI SOLO CORRE EL CHEQUEO 1 --que cada declarado exista como job--, porque
+      # `GITHUB_TOKEN` **no puede** leer la proteccion de rama: `administration` no
+      # existe como scope de ese token. El chequeo 2 corre en la Puerta 1, con el
+      # `gh` de quien commitea, que si es admin.
+      - name: Contrato de checks requeridos
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: npm run checks
+
+      # Y su arnes, que es lo unico que separa el validador de «alguien renombro un
+      # job y nadie se enterara». Su modo de falla es silencioso.
+      - name: Arnes del contrato de checks requeridos
+        run: ./scripts/arnes-checks-requeridos.sh
+
       - name: Typecheck
         run: npm run typecheck
 
