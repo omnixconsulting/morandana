@@ -89,7 +89,25 @@ jobs:
 
           # Idempotente: `synchronize` dispara en cada push del bot, y pegar la
           # seccion dos veces deja un cuerpo que crece solo.
-          if printf '%s' "$cuerpo" | grep -qiE '^[[:space:]]*#{1,6}[[:space:]].*robarlo[[:space:]]*$'; then
+          #
+          # LA COMPROBACION VA POR HERESTRING, NO POR TUBERIA
+          #
+          # Aqui decia `printf '%s' "$cuerpo" | grep -qiE …`, y con el
+          # `set -euo pipefail` de arriba eso rompia justo lo que esta guardia
+          # existe para evitar. `grep -q` sale en cuanto casa y cierra el pipe; si
+          # el cuerpo no cabe en el bufer de 64 KiB, `printf` se queda con datos
+          # sin escribir y recibe EPIPE. Con `pipefail`, el estado de la tuberia
+          # pasa a ser el de `printf`, o sea != 0, **aunque grep haya casado**: la
+          # condicion se evalua FALSA, el job cree que la seccion no esta y pega
+          # una SEGUNDA copia. En cada `synchronize` otra, y sin fallar: verde.
+          #
+          # Lo decide el BUFER, no el tamano del cuerpo: muerde cuando el
+          # encabezado cae antes del byte 65 536 y queda contenido despues.
+          # Medido en mise: encabezado en el byte 65 753 de 70 307.
+          #
+          # Un herestring no tiene tuberia que romper. No se quita el `pipefail`
+          # --es lo que hace fallar el `gh` de abajo-- sino la tuberia.
+          if grep -qiE '^[[:space:]]*#{1,6}[[:space:]].*robarlo[[:space:]]*$' <<<"$cuerpo"; then
             echo 'El cuerpo ya trae la seccion. No se toca.'
             exit 0
           fi
