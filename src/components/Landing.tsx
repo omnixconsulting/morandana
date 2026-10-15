@@ -13,7 +13,6 @@ const img = {
   isotipo: "/img/isotipo.png",
   heroBrindis: "/img/hero-brindis.jpg",
   promoTresCafes: "/img/hero-promo-cafes.jpg",
-  promoQR: "/img/hero-promo-qr.jpg",
   cafe: "/img/foto-cafe.jpg",
   chilaquiles: "/img/foto-chilaquiles.jpg",
   am: {
@@ -154,7 +153,7 @@ export default function Landing({
   // hero) tenga todo el ancho de banda en la primera carga (mejora LCP móvil).
   const [heroReady, setHeroReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const TOTAL_SLIDES = 3;
+  const TOTAL_SLIDES = 2;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -208,12 +207,11 @@ export default function Landing({
             style={{ filter: !scrolled ? "brightness(0) invert(1)" : "none", transition: "filter 0.3s" }}
           />
           <a
-            href="/qr"
-            onClick={() => track("ClicQR", { source: "nav" })}
+            href="#menu"
             className="text-sm font-semibold px-4 py-2 rounded-full transition-all duration-200"
             style={{ background: scrolled ? "#ff97a2" : "rgba(255,255,255,0.2)", color: "white", backdropFilter: !scrolled ? "blur(4px)" : "none" }}
           >
-            Pide aquí
+            Ver menú
           </a>
         </div>
       </nav>
@@ -256,24 +254,6 @@ export default function Landing({
             <p className="mt-2 text-white/65 text-sm">Aplica en todas las bebidas con café. ¡Tráete a quien quieras!</p>
             <div className="mt-7">
               <a href="#menu" className="inline-block bg-brand-pink text-white px-6 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity">Ver bebidas →</a>
-            </div>
-          </div>
-        </div>
-
-        {/* Slide 2 — Pide por QR */}
-        <div className="absolute inset-0 flex flex-col justify-end transition-opacity duration-1000" style={{ opacity: heroSlide === 2 ? 1 : 0, pointerEvents: heroSlide === 2 ? "auto" : "none" }}>
-          {(heroReady || heroSlide === 2) && <Image src={img.promoQR} alt="Pedido desde la app de Morandana" fill sizes="100vw" className="object-cover object-center" />}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(43,24,16,0.3) 0%, rgba(43,24,16,0.05) 35%, rgba(43,24,16,0.75) 100%)" }} />
-          <div className="relative px-6 pb-20 pt-32 max-w-lg mx-auto w-full">
-            <p className="text-white/70 text-sm font-medium tracking-widest uppercase mb-3">Pide en línea</p>
-            <h2 className="font-serif font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(2.8rem, 11vw, 4rem)" }}>
-              Pide desde<br />
-              <em className="italic" style={{ color: "#f6dfa4" }}>tu lugar</em><br />
-              con el QR
-            </h2>
-            <p className="mt-4 text-white/75 text-base leading-relaxed max-w-xs">Escanea, elige lo que se te antoje y… luego pasas directito a recoger.</p>
-            <div className="mt-7">
-              <a href="/qr" onClick={() => track("ClicQR", { source: "hero_slide" })} className="inline-block px-6 py-3 rounded-full font-semibold text-sm text-white transition-opacity hover:opacity-90" style={{ background: "#ff97a2" }}>Pide aquí →</a>
             </div>
           </div>
         </div>
@@ -354,17 +334,6 @@ export default function Landing({
         </div>
         <div className="relative rounded-3xl overflow-hidden" style={{ aspectRatio: "4/5" }}>
           <Image src={img.cafe} alt="Barista de Morandana con galleta y café" fill sizes="(max-width: 640px) 100vw, 512px" className="object-cover" />
-        </div>
-      </section>
-
-      {/* QR SECTION */}
-      <section className="mx-4 mb-4 rounded-3xl relative overflow-hidden py-16 px-8" style={{ background: "#f6dfa4" }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `url(${img.isotipo})`, backgroundRepeat: "repeat", backgroundSize: "96px 96px", opacity: 0.09 }} />
-        <div className="relative max-w-lg mx-auto text-center">
-          <Image src={img.isotipo} alt="" width={56} height={43} className="w-14 h-14 mx-auto mb-6 object-contain" style={{ opacity: 0.75 }} />
-          <h2 className="font-serif font-bold text-brand-dark leading-[1.1]" style={{ fontSize: "clamp(1.8rem, 7vw, 2.4rem)" }}>Pide desde tu lugar<br />con nuestro QR</h2>
-          <p className="mt-5 text-brand-dark/70 text-[15px] leading-relaxed">Escanea el código, elige lo que se te antoje y… luego pasas directito a recoger. Así de fácil.</p>
-          <p className="mt-3 text-brand-dark/45 text-sm">También disponible desde el link en nuestra bio de Instagram.</p>
         </div>
       </section>
 
