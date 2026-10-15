@@ -39,8 +39,8 @@ const CSP = [
   // las sirve desde el propio origen, pero el fallback puede ir directo.
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https://*.supabase.co https://www.googletagmanager.com https://*.google-analytics.com https://va.vercel-scripts.com",
-  // Mapa de Google, QR de pickup y el iframe noscript de GTM.
-  "frame-src https://maps.google.com https://www.google.com https://menuqr.ubtracker.com https://www.googletagmanager.com",
+  // Mapa de Google y el iframe noscript de GTM.
+  "frame-src https://maps.google.com https://www.google.com https://www.googletagmanager.com",
   "form-action 'self'",
   "upgrade-insecure-requests",
 ].join("; ");

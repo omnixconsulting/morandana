@@ -36,13 +36,13 @@ job «Lint, tipos, secretos, build y RLS» de este PR.
    Cualquiera de los tres rompiéndose cae en el `catch` y vuelve `null`, o sea el
    mismo síntoma del paso 3. Por eso ese paso es el que vale: si la fila
    desaparece, el camino completo —cliente, PostgREST y política— funciona.
-5. **`next`, `react`, `react-dom` → recorrer las dos rutas.** `npm run build &&
+5. **`next`, `react`, `react-dom` → recorrer la raíz.** `npm run build &&
    npm start`. En `/`, cambiar las tres pestañas del menú (A.M. / P.M. /
-   Bebidas), que son estado de cliente. Abrir `/qr` y recargar ahí: es la única
-   ruta que no es la raíz y monta un iframe a la página de pedidos. La consola no
-   debe traer errores de hidratación. El banner de cookies debe aparecer y la
-   decisión persistir al recargar: eso ejercita el `useSyncExternalStore` de
-   `useConsent`, que es lo que un salto de React toca.
+   Bebidas) y abrir el visor de menú completo, que son estado de cliente y
+   montan un overlay. La consola no debe traer errores de hidratación. El
+   banner de cookies debe aparecer y la decisión persistir al recargar: eso
+   ejercita el `useSyncExternalStore` de `useConsent`, que es lo que un salto de
+   React toca.
 6. **`@vercel/analytics`, `@vercel/speed-insights` → en el preview, no en
    local.** En dev piden `script.debug.js`, que el servidor local no sirve; ese
    404 es lo esperado y no prueba nada. En la URL de preview del check de Vercel,
