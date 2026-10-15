@@ -18,7 +18,8 @@
     "db:test": "./scripts/test-db.sh",
     "workflows": "./scripts/validar-workflows.sh",
     "env": "./scripts/validar-env.sh",
-    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run pii && npm run cadena && npm run cabeceras && npm run build && npm run workflows && npm run checks && npm run env",
+    "shell": "./scripts/validar-scripts-shell.sh",
+    "verificar": "npm run lint && npm run typecheck && npm run guardia && npm run pii && npm run cadena && npm run cabeceras && npm run build && npm run workflows && npm run shell && npm run checks && npm run env",
     "prepare": "husky || true",
     "commitlint": "commitlint",
     "checks": "./scripts/validar-checks-requeridos.sh"
