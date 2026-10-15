@@ -111,7 +111,7 @@ jobs:
           # para Dependabot, para que un PR humano sin seccion falle al instante.
           if [ "$AUTOR" = 'dependabot[bot]' ]; then
             intento=0
-            until printf '%s' "$CUERPO" | grep -qE "$ENC"; do
+            until grep -qE "$ENC" <<<"$CUERPO"; do
               intento=$((intento + 1))
               [ "$intento" -gt 9 ] && break
               echo "  esperando a que el pegado escriba la seccion ($intento/9)..."
@@ -120,20 +120,26 @@ jobs:
             done
           fi
 
-          printf '%s' "$CUERPO" | grep -qE "$ENC" \
+          # Herestring y no tuberia, por lo mismo que en
+          # `dependabot-como-probarlo.yml`. Aqui NO habia bug --este bloque no
+          # lleva `pipefail` y el veredicto siempre fue el de `grep`-- pero
+          # ensuciaba el log con `printf: write error: Broken pipe` en todo PR de
+          # cuerpo largo, y un error en el log de una puerta que paso ensena a
+          # ignorar los errores del log.
+          grep -qE "$ENC" <<<"$CUERPO" \
             || falla 'Falta la seccion «## Como probarlo» en el cuerpo del PR.'
-          seccion=$(printf '%s' "$CUERPO" | awk -v enc="$ENC" '
+          seccion=$(awk -v enc="$ENC" '
             $0 ~ enc { dentro=1; next }
             dentro && /^[[:space:]]*#{1,6}[[:space:]]/ { dentro=0 }
             dentro { print }
-          ')
-          desnudo=$(printf '%s' "$seccion" | tr -d '[:space:]')
+          ' <<<"$CUERPO")
+          desnudo=$(tr -d '[:space:]' <<<"$seccion")
           [ -z "$desnudo" ] && falla 'La seccion «Como probarlo» esta vacia.'
-          if printf '%s' "$seccion" | grep -qE '^[[:space:]]*[0-9]+[.)][[:space:]]+[^[:space:]]'; then
+          if grep -qE '^[[:space:]]*[0-9]+[.)][[:space:]]+[^[:space:]]' <<<"$seccion"; then
             echo 'Tiene pasos numerados.'; exit 0
           fi
           # Sin pasos se acepta una explicacion, no un encogimiento de hombros.
-          printf '%s' "$desnudo" | grep -qiE '^(n/?a|na|nada|ninguno|none|-{1,3})[.!]*$' \
+          grep -qiE '^(n/?a|na|nada|ninguno|none|-{1,3})[.!]*$' <<<"$desnudo" \
             && falla 'La seccion solo dice «N/A». Si no hay nada que probar a mano, di por que.'
           [ "${#desnudo}" -lt 30 ] \
             && falla "Sin pasos numerados, la explicacion debe decir por que (tiene ${#desnudo} caracteres, minimo 30)."
