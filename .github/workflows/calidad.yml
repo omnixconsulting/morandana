@@ -66,6 +66,28 @@ jobs:
       - name: Arnes de llaves plantadas
         run: ./scripts/arnes-secretos.sh
 
+      # LOS WORKFLOWS DE VERDAD, POR ACTIONLINT Y SHELLCHECK
+      #
+      # Esto no estaba. El unico lugar de CI que invocaba al validador era su
+      # ARNES --mas abajo, en «Arneses de los propios validadores»--, y el arnes
+      # copia el validador a un directorio de fixtures y le rompe casos a
+      # proposito ahi: comprueba que el validador siga sirviendo, y no mira ni un
+      # archivo de este repo. Asi que `.github/workflows/` no pasaba por
+      # actionlint ni por shellcheck en ninguna puerta de CI.
+      #
+      # Lo cubria la Puerta 1, en la maquina de quien commitea, y ahi se perdia:
+      # si shellcheck no esta instalado, actionlint se salta el analisis del shell
+      # y el validador lo decia en un `::notice::` facil de pasar por alto. En
+      # jerrymedrano eso dejo latente un SC2016 y en medicarmen un SC2046 que
+      # llevaba dias en `main`. Desde este PR, en CI faltar shellcheck es un
+      # error, no un aviso (ver `scripts/validar-workflows.sh`).
+      #
+      # VA TEMPRANO, no junto a su arnes: dura segundos, y GitHub factura el job
+      # redondeado al minuto. Un `.github/` roto ya no paga lint, tipos, build y
+      # el Postgres de las pruebas RLS antes de decirlo.
+      - name: Validador de workflows
+        run: npm run workflows
+
       # ── Capa L0 ──
 
       - name: Lint
@@ -121,6 +143,11 @@ jobs:
       # El arnes del validador de workflows (5.7.2): comprueba que sus expresiones
       # sigan casando. Una regex que deja de casar no falla, pasa, y encontro asi dos
       # cegueras del propio validador.
+      #
+      # Se queda, y SUMA al paso «Validador de workflows» de arriba en vez de
+      # sustituirlo: ese corre el validador sobre los workflows de este repo, este
+      # comprueba que el validador detecte lo que dice detectar. Sin el primero no
+      # se miran los archivos; sin el segundo, un validador ciego pasa en verde.
       - name: Arnes del validador de workflows
         run: ./scripts/arnes-workflows.sh
 
