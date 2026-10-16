@@ -2,13 +2,18 @@
 # Arnés del chequeo de puerto de `base-local.sh` (§5.7).
 #
 # Lo que este arnés existe para impedir: que el script vuelva a matar la base de
-# otro repo. Los puertos van en pares entre repos hermanos, así que el caso
-# «el puerto está ocupado» es normal, y antes se resolvía con `kill -9` sobre
-# cualquier cosa que escuchara. La aserción que importa no es que el script
-# falle: es que el proceso ajeno SIGA VIVO después.
+# otro repo. Antes se resolvía con `kill -9` sobre cualquier cosa que escuchara
+# el puerto. La aserción que importa no es que el script falle: es que el
+# proceso ajeno SIGA VIVO después.
+#
+# Desde el 15-oct-2026 cada repo tiene su puerto, así que encontrarlo ocupado ya
+# no es lo normal —antes iban en pares y sí lo era—. El arnés sigue haciendo
+# falta: un puerto propio hace el choque raro, no imposible, y es justo cuando
+# es raro cuando nadie vuelve a probar a mano que el script se niega en vez de
+# matar.
 #
 # Levanta su propio Postgres en un puerto y un datadir temporales. No toca el
-# datadir del repo ni ningún puerto de los pares.
+# datadir del repo ni el puerto de ningún otro.
 
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
