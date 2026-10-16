@@ -87,6 +87,12 @@ jobs:
       # el Postgres de las pruebas RLS antes de decirlo.
       - name: Validador de workflows
         run: npm run workflows
+      # Los `.sh` de `scripts/`, que el validador de arriba NO mira: ese revisa
+      # los bloques `run:` de los `.yml`. Va aqui y no solo en la cadena local
+      # porque este CI enumera los scripts uno por uno: una puerta que solo
+      # viviera en esa cadena la correria quien commitea, y nadie mas.
+      - name: Shellcheck sobre scripts/
+        run: npm run shell
 
       # ── Capa L0 ──
 
