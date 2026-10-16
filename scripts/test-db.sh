@@ -28,4 +28,12 @@ for f in "${archivos[@]}"; do
     printf '   FALLA %s\n%s\n' "$(basename "$f")" "$out"; fallas=$((fallas+1))
   fi
 done
-[ "$fallas" = 0 ] && echo "Pruebas SQL: todas pasan" || { echo "Pruebas SQL: $fallas archivo(s) con fallas"; exit 1; }
+# if/else y no `A && B || C`: con la forma corta, si el echo de exito fallara
+# --EPIPE si alguien canaliza la salida-- correria la rama de error y haria
+# exit 1, reportando fallas de SQL que no hubo.
+if [ "$fallas" = 0 ]; then
+  echo "Pruebas SQL: todas pasan"
+else
+  echo "Pruebas SQL: $fallas archivo(s) con fallas"
+  exit 1
+fi
