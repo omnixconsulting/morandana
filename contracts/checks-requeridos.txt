@@ -34,6 +34,20 @@
 # PR de solo documentacion no producia `analyze` y lo habria bloqueado para
 # siempre. El salto ahora vive adentro del job, que reporta igual.
 #
-Gatekeeper
+#
+# EL 16-OCT-2026 `Gatekeeper` SALIO DE ESTA LISTA
+# Porque dejo de existir como job. Sin la espera --que se quito el 13-oct, cuando
+# la proteccion paso a exigir por nombre-- lo unico que le quedaba era validar el
+# titulo y el cuerpo del PR: nueve segundos. Pero GitHub cobra cada job
+# redondeado al minuto, asi que cobraba uno entero: medido sobre los 8 repos,
+# 150 min facturados por 23 de trabajo real en dos dias y medio, el 84 % puro
+# redondeo. A esa escala no hay nada que optimizar adentro de un job; el unico
+# recorte posible es que deje de ser un job. Los dos pasos se mudaron al job que
+# ya corria en cada PR.
+#
+# Esto exigio quitar `Gatekeeper` de la proteccion de rama A MANO antes de
+# fusionar: un check requerido cuyo workflow ya no existe NUNCA aparece, y eso
+# bloquea el PR para siempre. El validador de abajo es el que forzo ese orden
+# --rechazo el commit mientras el contrato y la proteccion no coincidieran--.
 Lint, tipos, secretos, build y RLS
 analyze
