@@ -29,9 +29,9 @@ export LANG="${LANG:-C}"
 
 DB="${DB:-morandana}"
 
-# El puerto BASE de este repo. Va en pares entre repos hermanos para no gastar
-# puertos: solo uno de cada par puede estar arriba a la vez, y la guardia de
-# más abajo se niega a tocar el Postgres del hermano.
+# El puerto BASE de este repo, y es SUYO: ningún otro repo del equipo usa el
+# 55434. La guardia de más abajo no mata lo que encuentre en él, se niega a
+# arrancar y dice de quién es.
 PUERTO_BASE=55434
 
 # --- UN PUERTO POR ÁRBOL DE TRABAJO, NO POR REPO ------------------------------
@@ -97,9 +97,18 @@ fi
 stop_server() { como_pg "$BIN/pg_ctl" -D "$PGDATA" -m fast stop >/dev/null 2>&1 || true; }
 if [ "${1:-}" = "--stop" ]; then stop_server; echo "base-local: servidor detenido."; exit 0; fi
 
-# El puerto, antes de arrancar. Los puertos van en pares entre repos hermanos
-# — 55433 MAP/medicarmen, 55432 shikomi/mise—, así que encontrarlo ocupado por
-# otro repo es lo normal: solo puede haber uno de cada par arriba a la vez.
+#
+# El puerto, antes de arrancar. CADA REPO TIENE EL SUYO desde el 15-oct-2026.
+#
+# Este repo NUNCA compartió puerto: el apareamiento era de map/medicarmen en el
+# 55433 y de shikomi/mise en el 55432. El comentario que decía lo contrario era
+# texto copiado entre repos, y afirmaba de este lo que no era cierto. Se quita
+# junto con el apareamiento, que se deshizo porque en la práctica tumbaba la
+# puerta del repo hermano al trabajar en los dos.
+#
+# La guardia de abajo NO cambia, y es lo que importa de este bloque: sigue
+# negándose en vez de matar. Lo que cambia es que ya no salta en trabajo normal,
+# sólo cuando de verdad hay algo ajeno en el puerto.
 #
 # Esto antes se "resolvía" con `kill -9` sobre cualquier cosa que escuchara,
 # llamándola «postmaster huérfano» sin comprobarlo. En un clon nuevo eso mataba
