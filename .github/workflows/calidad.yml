@@ -31,6 +31,13 @@ jobs:
     name: Lint, tipos, secretos, build y RLS
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # `pull-requests: write` para los comentarios del título y de «Como
+    # probarlo», que antes vivían en su propio job. Va aquí y no arriba para que
+    # ningún job que se agregue después lo herede sin que alguien lo decida.
+    # Repite `contents: read` a propósito: un bloque de permisos en el job
+    # REEMPLAZA el del workflow, no lo extiende, y sin eso el checkout falla
+    # con «repository not found» --medido el 14-oct-2026--.
+    permissions: { contents: read, pull-requests: write }
     steps:
       # `fetch-depth: 0` porque gitleaks necesita el historial, no un checkout
       # somero. Antes era exclusivo del job `historial`; ahora lo paga todo el
@@ -200,3 +207,183 @@ jobs:
 
       - name: Pruebas SQL
         run: npm run db:test
+
+
+      # ───────────────────────────────────────────────────────────────────────
+      # LO QUE ERA EL JOB `Gatekeeper`, Y POR QUE AHORA ES UN PASO DE ESTE
+      #
+      # Gatekeeper ya no esperaba a nadie --eso se quito el 13-oct-2026, cuando
+      # la proteccion de rama paso a exigir los checks por nombre-- asi que lo
+      # unico que le quedaba era validar el titulo y el cuerpo del PR: NUEVE
+      # SEGUNDOS de trabajo. Pero GitHub cobra cada job redondeado al minuto
+      # hacia arriba, asi que cobraba uno entero, 150 veces en dos dias y medio.
+      # Medido el 16-oct-2026: 150 min facturados por 23 de trabajo real, el
+      # 84 % puro redondeo. A esa escala no hay nada que optimizar adentro: el
+      # unico recorte posible es que deje de ser un job.
+      #
+      # Como paso de un job que ya corria en cada PR, cuesta sus nueve segundos.
+      #
+      # SE PERDIO EL DISPARO `edited`, A PROPOSITO
+      # Gatekeeper escuchaba `edited` para que corregir el titulo en GitHub
+      # volviera a validarlo. Medido: 52 de sus 150 corridas eran eventos
+      # `edited` --el 35 %--, y casi todas revalidaban un titulo que no se habia
+      # roto, nada mas porque alguien toco la descripcion. Este workflow no
+      # escucha `edited` y no se le agrega: heredarlo aqui haria que cada edicion
+      # de la descripcion reejecutara las pruebas enteras, que cuesta MAS que el
+      # job que acabamos de quitar.
+      # A cambio, el comentario de abajo dice como revalidar. Un clic cuando
+      # pasa, contra un minuto cada vez que alguien edita un texto.
+      #
+      # VAN AL FINAL Y CON `!cancelled()`
+      # Al final para que una Puerta 1 en rojo no esconda que falta la seccion
+      # «Como probarlo»: las dos cosas se ven en la misma corrida, como cuando
+      # eran dos jobs en paralelo. Y solo en PR: en push a `main` no hay PR que
+      # mirar.
+      # ───────────────────────────────────────────────────────────────────────
+
+      # El título del PR sigue Conventional Commits, igual que los mensajes de
+      # commit. Va como check y no como hook porque el título se edita en
+      # GitHub, donde ningún hook local puede verlo.
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        id: lint
+        if: "!cancelled() && github.event_name == 'pull_request'"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: "!cancelled() && github.event_name == 'pull_request' && steps.lint.outputs.error_message != null"
+        with:
+          header: pr-titulo
+          message: |
+            El título de este PR tiene que seguir [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/), igual que los mensajes de commit.
+
+            ```
+            ${{ steps.lint.outputs.error_message }}
+            ```
+
+            Ejemplos válidos en este portafolio: `feat(proposals): …`, `fix(ci): …`, `docs: …`, `chore(deps): …`.
+
+            Corrígelo arriba y vuelve a correr este check con **Re-run jobs**: editar el título ya no dispara el workflow por sí solo, porque hacerlo reejecutaba las pruebas enteras cada vez que alguien tocaba un texto.
+
+      # Borra el comentario cuando el título se corrige, para no dejar un aviso
+      # rancio colgando en un PR que ya está bien.
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: "!cancelled() && github.event_name == 'pull_request' && steps.lint.outputs.error_message == null"
+        with:
+          header: pr-titulo
+          delete: true
+
+      - name: Seccion «Como probarlo»
+        id: comoprobar
+        if: "!cancelled() && github.event_name == 'pull_request'"
+        # AQUI HUBO UNA EXENCION PARA `dependabot[bot]`, Y SE FUE
+        #
+        # Decia `if: github.event.pull_request.user.login != 'dependabot[bot]'`,
+        # porque el bot no escribe pasos: su cuerpo es el changelog del paquete.
+        # Funcionaba --los PR del bot pasaban-- y aun asi se cambio el
+        # 14-oct-2026: lo que hacia era borrar la pregunta. «Como se comprueba
+        # que esto no rompio nada» SI tiene respuesta para un bump --que el
+        # comentario de version corresponda al SHA nuevo, por ejemplo--, solo que
+        # es distinta de la de un cambio de codigo, y lo que no tiene sentido es
+        # pedirsela al bot.
+        #
+        # Asi que la respuesta vive versionada en `.github/plantillas/`, donde se
+        # revisa en un diff, y `dependabot-como-probarlo.yml` la pega. Nadie
+        # queda exento y la seccion se valida siempre.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          # `dependabot[bot]` es el UNICO autor cuyo cuerpo lo escribe otro job de
+          # esta misma corrida, asi que es el unico que necesita espera.
+          AUTOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # El encabezado se ancla en «probarlo» y no en «Como probarlo»: la tilde
+          # de «Como» es multibyte y una clase [oa] no casa de forma fiable en el
+          # grep/awk del runner bajo cualquier locale.
+          ENC='^[[:space:]]*#{1,6}[[:space:]].*[Pp]robarlo[[:space:]]*$'
+          falla() {
+            echo "razon=$1" >> "$GITHUB_OUTPUT"
+            echo "::error::$1"
+            exit 1
+          }
+
+          # EL CUERPO SE LEE VIVO, NO DEL PAYLOAD DEL EVENTO
+          #
+          # Hasta el 14-oct-2026 el cuerpo entraba por env desde la expresion
+          # `pull_request.body` del evento, que es una FOTO del cuerpo al momento
+          # de disparar la corrida --el literal de esa expresion no se escribe
+          # aqui a proposito: actionlint y zizmor lo marcan aunque este en un
+          # comentario, y tienen razon, porque para ellos un comentario no se
+          # distingue del codigo--. Esa foto hace imposible que
+          # `dependabot-como-probarlo.yml` sirva de algo: ese job pega la seccion
+          # unos segundos despues del disparo, y este paso seguiria leyendo el
+          # cuerpo de antes y diria «falta la seccion» con la seccion YA puesta.
+          # Medido en meridian-crm, PR #109: el pegado paso a las 20:46:55 y el
+          # paso dijo que faltaba a las 20:47:19.
+          #
+          # Y no hay salida por el lado del evento: una edicion hecha con
+          # GITHUB_TOKEN **no dispara workflows** --regla de GitHub contra la
+          # recursion-- y un PR de Dependabot no puede leer secretos, asi que un
+          # PAT tampoco es opcion. Leer vivo es el unico camino.
+          #
+          # El cuerpo sigue siendo entrada NO CONFIABLE: entra a una variable de
+          # shell y nunca se interpola en el script.
+          cuerpo_vivo() { gh pr view "$PR" --json body --jq '.body // ""'; }
+          CUERPO=$(cuerpo_vivo)
+
+          # La espera: el pegado tarda ~8 s y este paso puede empezar antes. Solo
+          # para Dependabot, para que un PR humano sin seccion falle al instante.
+          if [ "$AUTOR" = 'dependabot[bot]' ]; then
+            intento=0
+            until grep -qE "$ENC" <<<"$CUERPO"; do
+              intento=$((intento + 1))
+              [ "$intento" -gt 9 ] && break
+              echo "  esperando a que el pegado escriba la seccion ($intento/9)..."
+              sleep 5
+              CUERPO=$(cuerpo_vivo)
+            done
+          fi
+
+          # Herestring y no tuberia: con tuberia, `printf` ensuciaba el log con
+          # `write error: Broken pipe` en todo PR de cuerpo largo, y un error en
+          # el log de una puerta que paso ensena a ignorar los errores del log.
+          grep -qE "$ENC" <<<"$CUERPO" \
+            || falla 'Falta la seccion «## Como probarlo» en el cuerpo del PR.'
+          seccion=$(awk -v enc="$ENC" '
+            $0 ~ enc { dentro=1; next }
+            dentro && /^[[:space:]]*#{1,6}[[:space:]]/ { dentro=0 }
+            dentro { print }
+          ' <<<"$CUERPO")
+          desnudo=$(tr -d '[:space:]' <<<"$seccion")
+          [ -z "$desnudo" ] && falla 'La seccion «Como probarlo» esta vacia.'
+          if grep -qE '^[[:space:]]*[0-9]+[.)][[:space:]]+[^[:space:]]' <<<"$seccion"; then
+            echo 'Tiene pasos numerados.'; exit 0
+          fi
+          # Sin pasos se acepta una explicacion, no un encogimiento de hombros.
+          grep -qiE '^(n/?a|na|nada|ninguno|none|-{1,3})[.!]*$' <<<"$desnudo" \
+            && falla 'La seccion solo dice «N/A». Si no hay nada que probar a mano, di por que.'
+          [ "${#desnudo}" -lt 30 ] \
+            && falla "Sin pasos numerados, la explicacion debe decir por que (tiene ${#desnudo} caracteres, minimo 30)."
+          echo "Sin pasos, pero explica (${#desnudo} caracteres)."
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: "!cancelled() && github.event_name == 'pull_request' && steps.comoprobar.outputs.razon != ''"
+        with:
+          header: pr-comoprobar
+          message: |
+            Este PR necesita una seccion **`## Como probarlo`** en su cuerpo.
+
+            ```
+            ${{ steps.comoprobar.outputs.razon }}
+            ```
+
+            Pasos numerados desde un estado limpio: que abrir, con que usuario o rol, que hacer, y que debe verse al final. Si el cambio no tiene nada que ejercitar a mano —solo documentacion, por ejemplo— di **por que** en una linea: «N/A» a secas no cuenta.
+
+            Escríbela arriba y vuelve a correr este check con **Re-run jobs**: editar el cuerpo ya no dispara el workflow por sí solo.
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: "!cancelled() && github.event_name == 'pull_request' && steps.comoprobar.outputs.razon == ''"
+        with:
+          header: pr-comoprobar
+          delete: true

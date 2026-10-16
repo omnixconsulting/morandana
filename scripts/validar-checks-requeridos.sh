@@ -114,8 +114,8 @@ else
   de_menos=$(comm -23 <(printf '%s\n' "$declarados" | sort) <(printf '%s\n' "$exigidos" | sort))
   if [ -n "$de_mas" ] || [ -n "$de_menos" ]; then
     echo '::error::la proteccion de rama y el contrato no coinciden.'
-    [ -n "$de_menos" ] && { echo '  declarados que la proteccion NO exige:'; printf '%s' "$de_menos" | sed 's/^/    /'; }
-    [ -n "$de_mas" ] && { echo '  exigidos que el contrato no declara:'; printf '%s' "$de_mas" | sed 's/^/    /'; }
+    [ -n "$de_menos" ] && { echo '  declarados que la proteccion NO exige:'; printf '%s\n' "$de_menos" | sed 's/^/    /'; }
+    [ -n "$de_mas" ] && { echo '  exigidos que el contrato no declara:'; printf '%s\n' "$de_mas" | sed 's/^/    /'; }
     fallos=1
   else
     echo "Proteccion de rama: exige exactamente los $n_decl del contrato."
