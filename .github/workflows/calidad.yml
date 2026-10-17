@@ -31,13 +31,23 @@ jobs:
     name: Lint, tipos, secretos, build y RLS
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # `pull-requests: write` para los comentarios del título y de «Como
-    # probarlo», que antes vivían en su propio job. Va aquí y no arriba para que
-    # ningún job que se agregue después lo herede sin que alguien lo decida.
-    # Repite `contents: read` a propósito: un bloque de permisos en el job
-    # REEMPLAZA el del workflow, no lo extiende, y sin eso el checkout falla
-    # con «repository not found» --medido el 14-oct-2026--.
-    permissions: { contents: read, pull-requests: write }
+    # SOLO LECTURA, Y ESO FUE UNA DECISION
+    #
+    # Hasta el 17-oct-2026 este job pedia `pull-requests: write`, y lo pedia
+    # SOLO para pegar y borrar los comentarios del titulo y de «Como probarlo».
+    # Pero este job tambien ejecuta el codigo del PR, asi que una dependencia o
+    # una action comprometida podia escribir en los PR del repositorio. El
+    # porque de cada fallo se escribe ahora en el RESUMEN del job, que no exige
+    # ningun permiso, y la escritura se fue.
+    #
+    # De paso arregla los PR de fork del repo publico: un fork recibe token de
+    # solo lectura, los pasos del comentario daban 403 y tumbaban este check.
+    #
+    # `pull-requests: read` hace falta para leer el cuerpo vivo con `gh pr view`
+    # y para el lint del titulo. Repite `contents: read` a proposito: un bloque
+    # de permisos en el job REEMPLAZA el del workflow, no lo extiende, y sin eso
+    # el checkout falla con «repository not found» --medido el 14-oct-2026--.
+    permissions: { contents: read, pull-requests: read }
     steps:
       # `fetch-depth: 0` porque gitleaks necesita el historial, no un checkout
       # somero. Antes era exclusivo del job `historial`; ahora lo paga todo el
@@ -250,28 +260,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+      # El porque va al RESUMEN del job (ver el bloque de permisos de arriba).
+      # No hace falta un paso que «borre» nada: el resumen es de cada corrida,
+      # asi que un titulo corregido simplemente produce una corrida sin esta
+      # seccion. Un comentario pegado si dejaba estado viejo que limpiar.
+      - name: Por qué falló el título
         if: "!cancelled() && github.event_name == 'pull_request' && steps.lint.outputs.error_message != null"
-        with:
-          header: pr-titulo
-          message: |
-            El título de este PR tiene que seguir [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/), igual que los mensajes de commit.
+        env:
+          # El motivo trae el TITULO del PR, que es entrada no confiable: entra
+          # por env y nunca se interpola en el script.
+          MOTIVO: ${{ steps.lint.outputs.error_message }}
+        run: |
+          {
+            cat <<'MD'
+          ## El título de este PR no sigue Conventional Commits
 
-            ```
-            ${{ steps.lint.outputs.error_message }}
-            ```
+          ```
+          MD
+            printf '%s\n' "$MOTIVO"
+            cat <<'MD'
+          ```
 
-            Ejemplos válidos en este portafolio: `feat(proposals): …`, `fix(ci): …`, `docs: …`, `chore(deps): …`.
+          Ejemplos válidos en este portafolio: `feat(proposals): …`, `fix(ci): …`, `docs: …`, `chore(deps): …`.
 
-            Corrígelo arriba y vuelve a correr este check con **Re-run jobs**: editar el título ya no dispara el workflow por sí solo, porque hacerlo reejecutaba las pruebas enteras cada vez que alguien tocaba un texto.
-
-      # Borra el comentario cuando el título se corrige, para no dejar un aviso
-      # rancio colgando en un PR que ya está bien.
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: "!cancelled() && github.event_name == 'pull_request' && steps.lint.outputs.error_message == null"
-        with:
-          header: pr-titulo
-          delete: true
+          Corrígelo y vuelve a correr este check con **Re-run jobs**: editar el título no dispara el workflow por sí solo, porque hacerlo reejecutaba las pruebas enteras cada vez que alguien tocaba un texto.
+          MD
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Seccion «Como probarlo»
         id: comoprobar
@@ -367,23 +381,23 @@ jobs:
             && falla "Sin pasos numerados, la explicacion debe decir por que (tiene ${#desnudo} caracteres, minimo 30)."
           echo "Sin pasos, pero explica (${#desnudo} caracteres)."
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+      - name: Por qué falló «Como probarlo»
         if: "!cancelled() && github.event_name == 'pull_request' && steps.comoprobar.outputs.razon != ''"
-        with:
-          header: pr-comoprobar
-          message: |
-            Este PR necesita una seccion **`## Como probarlo`** en su cuerpo.
+        env:
+          MOTIVO: ${{ steps.comoprobar.outputs.razon }}
+        run: |
+          {
+            cat <<'MD'
+          ## Falta la sección «Como probarlo» en el cuerpo del PR
 
-            ```
-            ${{ steps.comoprobar.outputs.razon }}
-            ```
+          ```
+          MD
+            printf '%s\n' "$MOTIVO"
+            cat <<'MD'
+          ```
 
-            Pasos numerados desde un estado limpio: que abrir, con que usuario o rol, que hacer, y que debe verse al final. Si el cambio no tiene nada que ejercitar a mano —solo documentacion, por ejemplo— di **por que** en una linea: «N/A» a secas no cuenta.
+          Pasos numerados desde un estado limpio: qué abrir, con qué usuario o rol, qué hacer, y qué debe verse al final. Si el cambio no tiene nada que ejercitar a mano —solo documentación, por ejemplo— di **por qué** en una línea: «N/A» a secas no cuenta.
 
-            Escríbela arriba y vuelve a correr este check con **Re-run jobs**: editar el cuerpo ya no dispara el workflow por sí solo.
-
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: "!cancelled() && github.event_name == 'pull_request' && steps.comoprobar.outputs.razon == ''"
-        with:
-          header: pr-comoprobar
-          delete: true
+          Escríbela y vuelve a correr este check con **Re-run jobs**: editar el cuerpo no dispara el workflow por sí solo.
+          MD
+          } >> "$GITHUB_STEP_SUMMARY"
