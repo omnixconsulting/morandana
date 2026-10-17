@@ -86,7 +86,16 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
       if (acum != "") { printf "%s", acum > (dest "/" arch "." ln ".sh"); close(dest "/" arch "." ln ".sh") }
       acum = ""
     }
-    bloque && match($0, /^[ \t]*/) && RLENGTH > sangria && $0 ~ /[^ \t]/ {
+    # UNA LINEA EN BLANCO ES PARTE DEL BLOQUE, NO SU FINAL
+    # Hasta el 17-oct-2026 la condicion de abajo exigia `$0 ~ /[^ \t]/`, asi que
+    # el bloque se cortaba en el primer blanco. Eso no era solo un falso error
+    # sobre un heredoc partido: **un error de sintaxis DESPUES de una linea en
+    # blanco no se revisaba nunca**. El respaldo era shellcheck via actionlint,
+    # pero shellcheck es OPCIONAL --este mismo archivo lo dice mas abajo-- asi
+    # que sin el el hueco era total. Un escalar `|` de YAML incluye sus lineas
+    # vacias.
+    bloque && $0 !~ /[^ \t]/ { acum = acum "\n"; next }
+    bloque && match($0, /^[ \t]*/) && RLENGTH > sangria {
       linea = substr($0, sangria + 3); acum = acum linea "\n"; next
     }
     bloque { volcar(); bloque = 0 }

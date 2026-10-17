@@ -153,6 +153,26 @@ jobs:
       - uses: actions/checkout@$SHA
 YAML
 
+# EL BLOQUE `run:` NO TERMINA EN LA PRIMERA LINEA EN BLANCO
+# Hasta el 17-oct-2026 la extraccion exigia que la linea tuviera contenido, asi
+# que cortaba el bloque en el primer blanco y **un error de sintaxis despues de
+# un blanco no se revisaba nunca**. Este fixture tiene el `fi` huerfano DESPUES
+# del blanco: si la extraccion vuelve a cortar ahi, pasa en verde.
+plantar blanco-y-luego-roto.yml 'no es shell valido' <<YAML
+name: roto despues de un blanco
+on:
+  pull_request:
+jobs:
+  uno:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo primero
+
+          fi
+YAML
+
 plantar continue-on-error.yml 'continue-on-error: true' <<YAML
 name: puerta que no tumba
 on:
