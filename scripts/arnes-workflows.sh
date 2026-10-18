@@ -173,6 +173,31 @@ jobs:
           fi
 YAML
 
+# LA SENAL MUERTA: `head_commit.message` para distinguir merge de push directo.
+# Dejo de casar en silencio al pasar a squash (~3-oct-2026) y durante dos semanas
+# las puertas se repitieron en `main` sin que nadie lo decidiera.
+#
+# EL FIXTURE DECLARA `permissions:` A PROPOSITO, y la aguja es texto del mensaje
+# de error, sin metacaracteres. Sin las dos cosas, zizmor marcaba el fixture por
+# OTRA razon y CITABA la linea del if en su salida: la coincidencia era con la
+# cita de zizmor y este caso pasaba sin probar nada. Comprobado neutralizando la
+# guarda: seguia en verde.
+plantar senal-muerta.yml 'que no distingue un merge de un push directo' <<YAML
+name: decide con el mensaje del commit
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  uno:
+    if: "!startsWith(github.event.head_commit.message, 'Merge pull request #')"
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hola
+YAML
+
 plantar continue-on-error.yml 'continue-on-error: true' <<YAML
 name: puerta que no tumba
 on:

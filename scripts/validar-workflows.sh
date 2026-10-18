@@ -370,5 +370,30 @@ else
   fi
 fi
 
+# ---------------------------------------------------------------------------
+# 7. La senal muerta: decidir con `head_commit.message`.
+#
+# Hasta el 17-oct-2026 varios `calidad.yml` saltaban el job en push a `main`
+# cuando el mensaje empezaba con «Merge pull request #». Funciono mientras las
+# fusiones eran merge commits y **dejo de funcionar en silencio cuando el repo
+# paso a squash** (~3-oct-2026): el mensaje de un squash es «titulo (#123)». Una
+# condicion que deja de casar no falla, pasa — y durante dos semanas las puertas
+# se repitieron en `main` sin que nadie lo hubiera decidido.
+#
+# Se prohibe la senal, no el proposito. Si de verdad hay que distinguir un merge
+# de un push directo, lo que sirve es `committer == 'web-flow'` --verificado en
+# los 8 repos--. Y antes de usarla conviene leer por que en push a `main` las
+# puertas se repiten a proposito.
+#
+# Las lineas de comentario no cuentan: `^[^#]*` no puede cruzar un `#`, asi que
+# el propio comentario que cuenta esta historia no se delata.
+muertas=$(grep -nE "^[^#]*head_commit\.message" "$dir"/*.yml "$dir"/*.yaml 2>/dev/null || true)
+if [ -n "$muertas" ]; then
+  echo '::error::un workflow decide con «head_commit.message», que no distingue un merge de un push directo desde que las fusiones son squash.'
+  printf '%s\n' "$muertas" | sed 's/^/    /'
+  echo '    La senal que si sirve: committer igual a «web-flow». Pero mide antes si de verdad quieres saltarte la puerta.'
+  fallos=1
+fi
+
 [ "$fallos" -eq 0 ] && echo "Validador de workflows: $n bloque(s) \`run:\` validos, "'`if:`'" con delimitadores cerrados, actions fijadas por SHA, jobs con timeout, y zizmor sin hallazgos medium o mas"
 exit "$fallos"
