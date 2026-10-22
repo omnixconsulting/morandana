@@ -13,6 +13,15 @@
 # con «exists but is not empty», que tampoco dice que sea basura. Costo media
 # hora diagnosticarlo creyendo que era un problema de worktrees.
 #
+# El 22-oct-2026 este mismo arnes atrapo un SEGUNDO defecto, en el candado que
+# se puso para el primero: `mkdir` del candado era atomico, pero PUBLICABA UN
+# CANDADO SIN DUENO --el `pid` se escribia un instante despues-- y la corrida
+# que perdia el `mkdir` leia ese hueco como «huerfano» y borraba el candado de
+# la otra. En el Mac la ventana casi nunca se abria; en el runner de GitHub se
+# abria SIEMPRE, y el arnes fallo identico en dos reintentos (corrida
+# 39705980603). El caso 2b planta ese estado quieto, para que no haya que
+# depender de ninguna ventana.
+#
 # El arnes del puerto (`arnes-base-local.sh`) NO cubre esto: prueba que el
 # script no mate la base de otro repo, que es un caso distinto.
 #
@@ -41,10 +50,17 @@ echo 'Arnes de concurrencia de base-local:'
 # abrio esa vez. Se queda porque es lo que el usuario ve, pero NO es lo que
 # guarda el candado.
 #
-# Las dos aserciones DETERMINISTAS son «la que pierde avisa» --sin candado no
-# hay nada que avisar-- y el caso 2 del candado huerfano. Esas dos son las que
-# salieron rojas al quitarlo. Si alguien recorta este arnes, que recorte la
-# primera, no esas.
+# Las aserciones DETERMINISTAS de este arnes son «la que pierde avisa» --sin
+# candado no hay nada que avisar--, el caso 2 del candado huerfano y el caso 2b
+# del candado sin dueno legible. Esas son las que salieron rojas al quitar el
+# candado y al romperlo. Si alguien recorta este arnes, que recorte la primera,
+# no esas.
+#
+# La cuarta asercion de este caso --«ninguna declara huerfano el candado de la
+# otra»-- tampoco es el sintoma: es el MECANISMO. Sale roja justo cuando el
+# candado se publica sin dueno, y es la que habria dicho en CI que la carrera
+# no era la del 8-oct sino un robo. Depende de la ventana, como el resto de
+# este caso; el que no depende de nada es el 2b.
 ( ./scripts/base-local.sh > "$TMP/a.log" 2>&1 ) &
 ( ./scripts/base-local.sh > "$TMP/b.log" 2>&1 ) &
 wait
@@ -52,6 +68,10 @@ wait
 corrupcion=$(grep -hcE 'PANIC|pg_wal.*File exists|failed to remove contents' "$TMP/a.log" "$TMP/b.log" | paste -sd+ - | bc)
 listos=$(grep -hc 'Listo' "$TMP/a.log" "$TMP/b.log" | paste -sd+ - | bc)
 espero=$(grep -hc 'esperando' "$TMP/a.log" "$TMP/b.log" | paste -sd+ - | bc)
+# Declarar huerfano el candado de la OTRA mientras la otra esta viva es la
+# firma de que el candado se publico sin dueno (22-oct-2026). En una carrera
+# de verdad ninguna de las dos puede decirlo, nunca.
+robos=$(grep -hc 'huerfano\|huérfano' "$TMP/a.log" "$TMP/b.log" | paste -sd+ - | bc)
 
 if [ "$corrupcion" != "0" ]; then
   echo '  MAL  dos corridas simultaneas CORROMPIERON el datadir'
@@ -74,6 +94,20 @@ if [ "$espero" -lt 1 ]; then
 else
   echo '  ok   la segunda dice que espera, no muere'
 fi
+if [ "$robos" != "0" ]; then
+  echo '  MAL  una declaro HUERFANO el candado de la otra, que estaba viva'
+  echo '       (el candado se publico sin dueno: ver el bloque del candado)'
+  fallos=1
+else
+  echo '  ok   ninguna declara huerfano el candado de la otra'
+fi
+# Los dos logs completos cuando algo de este caso sale mal. La carrera se
+# diagnostica por el ORDEN de los mensajes, y en CI no hay forma de volver a
+# mirar: el $TMP se borra al salir.
+if [ "$fallos" -ne 0 ]; then
+  echo '       --- a.log ---'; sed 's/^/       /' "$TMP/a.log"
+  echo '       --- b.log ---'; sed 's/^/       /' "$TMP/b.log"
+fi
 
 apagar
 
@@ -83,9 +117,11 @@ apagar
 # proceso vivo de verdad (un `sleep`) y se exige que el script espere y despues
 # falle. Con ESPERA=2 la prueba tarda dos segundos, no noventa.
 rm -rf "$PGDATA" "$PGDATA.lock"
-mkdir -p "$PGDATA.lock"
 sleep 30 & RETEN=$!
-echo $RETEN > "$PGDATA.lock/pid"
+# Se planta el candado CON LA FORMA QUE EL SCRIPT CREA --un enlace cuyo blanco
+# es el PID del dueno--. Un arnes que planta una forma que el script ya no usa
+# prueba otra cosa y pasa por la razon equivocada.
+ln -s "$RETEN" "$PGDATA.lock"
 salida=$(BASE_LOCAL_ESPERA=2 ./scripts/base-local.sh 2>&1); codigo=$?
 kill $RETEN 2>/dev/null; wait $RETEN 2>/dev/null
 if [ "$codigo" -ne 0 ] && printf '%s' "$salida" | grep -q 'levantando esta base'; then
@@ -98,14 +134,59 @@ rm -rf "$PGDATA.lock"
 
 # --- 2) candado huerfano: un PID muerto no bloquea para siempre --------------
 rm -rf "$PGDATA" "$PGDATA.lock"
-mkdir -p "$PGDATA.lock"
 # Un PID que seguro no existe: el maximo del sistema mas uno nunca esta vivo.
-echo 99999999 > "$PGDATA.lock/pid"
+ln -s 99999999 "$PGDATA.lock"
 salida=$(./scripts/base-local.sh 2>&1); codigo=$?
 if [ "$codigo" -eq 0 ] && printf '%s' "$salida" | grep -q 'huerfano\|huérfano'; then
   echo '  ok   un candado de un proceso muerto se reutiliza, no bloquea'
 else
   echo "  MAL  un candado huerfano dejo el script atorado (exit $codigo)"
+  printf '%s\n' "$salida" | tail -3 | sed 's/^/         /'
+  fallos=1
+fi
+apagar
+
+# --- 2b) un candado SIN DUENO LEGIBLE no se roba: se espera -----------------
+#
+# ESTE ES EL CASO DEL DEFECTO DEL 22-oct-2026, y es determinista.
+#
+# Con el candado viejo --`mkdir` mas un archivo `pid` adentro-- existia un
+# instante en que el candado ya estaba puesto pero todavia no decia de quien
+# era, y la corrida que perdia el `mkdir` leia ese hueco como «huerfano» y
+# BORRABA el candado de la otra. Duraba microsegundos: en el Mac casi nunca se
+# abria, en el runner de GitHub se abria SIEMPRE y el arnes fallaba identico en
+# cada reintento.
+#
+# Aqui ese estado se planta a mano --un candado con la forma vieja, sin `pid`--
+# y se queda quieto, asi que la asercion no depende de ninguna ventana. Lo que
+# se exige es la regla: un candado que no se puede atribuir se espera y se
+# falla, NUNCA se roba.
+rm -rf "$PGDATA" "$PGDATA.lock"
+mkdir -p "$PGDATA.lock"
+salida=$(BASE_LOCAL_ESPERA=2 ./scripts/base-local.sh 2>&1); codigo=$?
+if [ "$codigo" -ne 0 ] && ! printf '%s' "$salida" | grep -q 'huerfano\|huérfano'; then
+  echo '  ok   un candado sin dueno legible se espera, no se roba'
+else
+  echo "  MAL  se robo un candado que no pudo atribuir (exit $codigo)"
+  printf '%s\n' "$salida" | tail -3 | sed 's/^/         /'
+  fallos=1
+fi
+rm -rf "$PGDATA.lock"
+apagar
+
+# --- 2c) un candado de la forma VIEJA, con su PID muerto, se recicla ---------
+#
+# La forma vieja se sigue leyendo a proposito: un candado de directorio que
+# quedo tirado porque a su dueno lo mataron a SIGKILL se reconoce por su PID,
+# en vez de bloquear 90 s a quien actualice el script.
+rm -rf "$PGDATA" "$PGDATA.lock"
+mkdir -p "$PGDATA.lock"
+echo 99999999 > "$PGDATA.lock/pid"
+salida=$(./scripts/base-local.sh 2>&1); codigo=$?
+if [ "$codigo" -eq 0 ] && printf '%s' "$salida" | grep -q 'huerfano\|huérfano'; then
+  echo '  ok   un candado viejo con su PID muerto se recicla'
+else
+  echo "  MAL  un candado de la forma vieja dejo el script atorado (exit $codigo)"
   printf '%s\n' "$salida" | tail -3 | sed 's/^/         /'
   fallos=1
 fi
