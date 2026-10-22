@@ -16,33 +16,74 @@ const CABECERAS_ABSOLUTAS = [
 
 // CSP en Report-Only: MIDE, no bloquea.
 //
-// Y aquí hay algo que conviene decir de frente en vez de esconderlo: el sitio
-// carga Google Tag Manager con un script EN LÍNEA, y GTM existe justamente para
-// inyectar terceros decididos fuera del repo. Con `script-src 'self'` estricta,
-// GTM va a reportar violaciones — eso es el dato, no un defecto de la política.
+// El sitio carga Google Tag Manager con un script EN LÍNEA, y GTM existe
+// justamente para inyectar terceros decididos fuera del repo. Con
+// `script-src 'self'` estricta, GTM reporta violaciones — eso era el dato, no un
+// defecto de la política. El reporte funcionaba como INVENTARIO: decir qué carga
+// GTM de verdad en el navegador de un visitante, que nadie sabía.
 //
-// El reporte funciona entonces como INVENTARIO: dice qué carga GTM de verdad en
-// el navegador de un visitante, que hoy nadie sabe y que importa para LFPDPPP.
+// EL INVENTARIO YA SE LEVANTÓ (21-oct-2026), MIDIENDO EN UN NAVEGADOR REAL
 //
-// Promover esta CSP a activa exige una decisión real: nonce para el script de
-// GTM, o prescindir de GTM. Poner 'unsafe-inline' para que "pase" dejaría la
-// CSP sin la única propiedad por la que vale la pena tenerla.
+// Una carga de la portada, tras aceptar cookies, produjo ~20 violaciones. GTM
+// resultó cargar GA4 (G-3108JWT196) y Google Ads (AW-11153340548), y esos dos
+// hablan con seis hosts que esta lista no declaraba. Están abajo, cada uno con
+// la ruta por la que se le vio.
+//
+// Y ese era el problema de dejarlos sin declarar: con veinte líneas conocidas en
+// cada reporte, **un tercero NUEVO no se distingue**. Declarar lo ya medido
+// convierte el inventario en un DETECTOR DE CAMBIOS, que es para lo que sirve de
+// aquí en adelante: cualquier host que aparezca ahora es uno que nadie decidió.
+//
+// LO QUE SIGUE SIN PODERSE ACTIVAR, Y POR QUÉ
+//
+// `script-src` se queda en report-only. Las únicas violaciones que deben quedar
+// son los scripts EN LÍNEA —cuatro por carga: los de arranque de Next y el de
+// GTM— y para permitirlos sin `'unsafe-inline'` hacen falta nonce o hash:
+//
+//   - **nonce**: lo genera un proxy por petición, y un nonce no se puede cachear,
+//     así que **vuelve dinámicas todas las rutas que cubra**. En un sitio de
+//     marketing que vive de cargar rápido, y que ya tuvo trabajo de LCP móvil,
+//     ese precio es mayor que lo que compra.
+//   - **hash**: el del script de GTM es estable, pero los de arranque de Next
+//     cambian en cada build.
+//   - `'unsafe-inline'` dejaría la CSP sin la única propiedad por la que vale la
+//     pena tenerla.
+//
+// **El siguiente paso, cuando el reporte salga limpio:** partir en dos cabeceras
+// —una ACTIVA con todo salvo `script-src`, y esta en report-only con la política
+// completa—. `object-src 'none'`, `base-uri`, `frame-ancestors` y `form-action`
+// bloquean clases de ataque reales y no tienen nada que ver con GTM. No se hace
+// en el mismo cambio: primero se comprueba en vivo que la lista de abajo está
+// completa.
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
-  "script-src 'self' https://www.googletagmanager.com",
+  // `googleads.g.doubleclick.net` sirve el script de conversión de Google Ads:
+  // medido el 21-oct en /pagead/viewthroughconversion/11153340548/.
+  "script-src 'self' https://www.googletagmanager.com https://googleads.g.doubleclick.net",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   // Feed e imágenes del menú vienen de Supabase Storage; el optimizador de Next
   // las sirve desde el propio origen, pero el fallback puede ir directo.
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.supabase.co https://www.googletagmanager.com https://*.google-analytics.com https://va.vercel-scripts.com",
+  // Los cuatro hosts de Google se agregaron el 21-oct-2026 con la ruta por la
+  // que se les vio. `analytics.google.com` NO lo cubre `*.google-analytics.com`:
+  // es otro dominio, no un subdominio.
+  //   www.google.com          /ccm/collect y /rmkt/collect  (Ads)
+  //   analytics.google.com    /g/collect                    (GA4)
+  //   ad.doubleclick.net      /ccm/s/collect                (Ads)
+  //   stats.g.doubleclick.net /g/collect                    (GA4)
+  "connect-src 'self' https://*.supabase.co https://www.googletagmanager.com https://*.google-analytics.com https://analytics.google.com https://www.google.com https://ad.doubleclick.net https://stats.g.doubleclick.net https://va.vercel-scripts.com",
   // Mapa de Google y el iframe noscript de GTM.
   "frame-src https://maps.google.com https://www.google.com https://www.googletagmanager.com",
   "form-action 'self'",
-  "upgrade-insecure-requests",
+  // SIN `upgrade-insecure-requests`: en una política report-only **se ignora**, y
+  // el navegador lo dice con un error en consola en cada carga —medido—. Lo que
+  // esa directiva compraría ya lo da el `Strict-Transport-Security` que Vercel
+  // emite (max-age de dos años, includeSubDomains, preload). Vuelve el día que
+  // haya una cabecera activa.
 ].join("; ");
 
 const nextConfig: NextConfig = {
