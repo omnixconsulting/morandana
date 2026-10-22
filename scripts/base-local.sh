@@ -170,11 +170,49 @@ fi
 # tampoco dice que sea basura de una corrida abortada. Costó media hora
 # diagnosticarlo creyendo que era un problema de worktrees.
 #
-# `mkdir` es la primitiva atómica aquí: o la crea este proceso, o ya existía.
-# No se usa `flock`, que en macOS no viene de serie.
+# EL CANDADO SE PUBLICA YA CON DUEÑO, Y ESO ES EL PUNTO DE TODO EL BLOQUE.
+#
+# Hasta el 22-oct-2026 el candado era `mkdir "$PGDATA.lock"` con un archivo
+# `pid` adentro. `mkdir` es atómico, sí, pero PUBLICA UN CANDADO SIN DUEÑO:
+# entre el `mkdir` y el `echo $$ > …/pid` hay una ventana en la que el candado
+# ya existe para todo el mundo pero todavía no dice de quién es. La corrida que
+# perdía el `mkdir` leía un `pid` que aún no estaba, concluía «candado
+# huérfano» --del candado RECIÉN puesto por la otra-- y lo BORRABA. Las dos
+# quedaban dentro y el datadir se corrompía igual que sin candado.
+#
+# En el Mac la ventana casi nunca se abre --8 núcleos, las dos corridas se
+# desincronizan antes de llegar aquí: 40 de 40 sin solaparse--. En el runner de
+# GitHub se abre SIEMPRE: 2 vCPU, las dos arrancadas en el mismo instante y
+# recorriendo el mismo camino se quedan en lockstep. El arnés de concurrencia
+# falló idéntico en dos intentos (morandana, corrida 39705980603) con esta
+# firma, que es la de ESTE defecto y no la de la carrera del 8-oct:
+#
+#   initdb: error: could not create directory ".../pgdata/pg_wal": File exists
+#   MAL  ninguna dijo que estaba esperando el candado
+#
+# Reproducido en local metiendo `sleep 0.02` entre el `mkdir` y el `echo $$`,
+# sin cambiar nada más: la que pierde dice «candado huérfano» y entra.
+#
+# `ln -s "$$"` lo cierra POR CONSTRUCCIÓN: `symlink(2)` es atómico --falla con
+# EEXIST si ya está-- y el PID viaja en el BLANCO del enlace, así que crear el
+# candado y decir de quién es son la MISMA llamada al sistema. Un candado que
+# existe ya tiene dueño legible, y el estado «existe pero no se sabe de quién
+# es» deja de existir. El blanco queda colgando a propósito: nunca se
+# dereferencia, sólo se lee con `readlink`. Tampoco se usa `flock`, que en
+# macOS no viene de serie.
 LOCK="$PGDATA.lock"
 ESPERA="${BASE_LOCAL_ESPERA:-90}"   # segundos; 0 = no esperar
 mkdir -p "$(dirname "$LOCK")"
+
+# El dueño sale del blanco del enlace. El `$LOCK/pid` es la forma VIEJA del
+# candado: se sigue leyendo para que un residuo de la versión anterior --un
+# candado de directorio que quedó porque a su dueño lo mataron a SIGKILL-- se
+# reconozca por su PID en vez de bloquear 90 s a quien actualice. Se puede
+# quitar cuando no queden candados viejos tirados.
+dueno_del_candado() {
+  readlink "$LOCK" 2>/dev/null && return 0
+  cat "$LOCK/pid" 2>/dev/null || true
+}
 
 # ESPERA EN VEZ DE FALLAR AL INSTANTE, y la razón salió de usarlo.
 #
@@ -188,30 +226,54 @@ mkdir -p "$(dirname "$LOCK")"
 # con el mismo mensaje, que sigue siendo el caso que hay que poder ver.
 inicio=$SECONDS
 while :; do
-  if mkdir "$LOCK" 2>/dev/null; then
-    echo $$ > "$LOCK/pid"
-    break
-  fi
-  DUENO="$(cat "$LOCK/pid" 2>/dev/null || echo '')"
+  # EL `-d` NO ES DECORACION: `ln -s X dir` no falla, METE el enlace DENTRO del
+  # directorio y sale con 0. Sin esa guarda, un candado de la forma vieja --que
+  # es un directorio-- se tomaria por candado propio recien puesto y la corrida
+  # seguiria sin serializar nada. Medido: el caso 2b del arnes pasaba a verde
+  # por la razon equivocada.
+  if [ ! -d "$LOCK" ] && ln -s "$$" "$LOCK" 2>/dev/null; then break; fi
+
+  DUENO="$(dueno_del_candado)"
+
   # Candado huérfano: su dueño ya no existe. Se toma sin esperar.
-  if [ -z "$DUENO" ] || ! kill -0 "$DUENO" 2>/dev/null; then
-    echo "→ candado huérfano de un proceso muerto; se reutiliza"
-    rm -rf "$LOCK"
-    continue
+  #
+  # EL BORRADO SE PIDE CON OTRO `ln -s`, no se hace a secas: dos corridas que
+  # vean el mismo PID muerto borrarían las DOS, y la segunda se llevaría el
+  # candado que la primera ya había puesto --el mismo defecto de arriba, un
+  # peldaño más abajo--. Con el derecho de robo sólo una borra, y revalida con
+  # el candado ya quieto: si entretanto el dueño cambió, no toca nada.
+  if [ -n "$DUENO" ] && ! kill -0 "$DUENO" 2>/dev/null; then
+    # El derecho de robo también puede quedar huérfano si a alguien lo matan en
+    # esos microsegundos; se recicla por PID, igual que el candado.
+    ROBADOR="$(readlink "$LOCK.robo" 2>/dev/null || true)"
+    if [ -n "$ROBADOR" ] && ! kill -0 "$ROBADOR" 2>/dev/null; then rm -rf "$LOCK.robo"; fi
+    if [ ! -d "$LOCK.robo" ] && ln -s "$$" "$LOCK.robo" 2>/dev/null; then
+      if [ "$(dueno_del_candado)" = "$DUENO" ]; then
+        echo "→ candado huérfano del PID $DUENO; se reutiliza"
+        rm -rf "$LOCK"
+      fi
+      rm -rf "$LOCK.robo"
+      continue
+    fi
   fi
+
+  # $DUENO vacío con el candado puesto = NO SE SABE DE QUIÉN ES. No se roba:
+  # robar un candado que no se puede atribuir es exactamente el defecto que
+  # este bloque arregla. Se espera, y al vencer el plazo se falla diciendo
+  # cómo quitarlo a mano.
   if [ $((SECONDS - inicio)) -ge "$ESPERA" ]; then
     cat >&2 <<AYUDA
-::error::Otra corrida de base-local lleva más de ${ESPERA}s levantando esta base (PID $DUENO).
+::error::Otra corrida de base-local lleva más de ${ESPERA}s levantando esta base (PID ${DUENO:-desconocido}).
   Dos a la vez corrompen el datadir, así que ésta no sigue. Si ese proceso
   quedó colgado, mátalo y borra el candado:
       rm -rf "$LOCK"
 AYUDA
     exit 1
   fi
-  [ $((SECONDS - inicio)) -eq 0 ] && echo "→ otra corrida tiene el candado (PID $DUENO); esperando…"
+  [ $((SECONDS - inicio)) -eq 0 ] && echo "→ otra corrida tiene el candado (PID ${DUENO:-desconocido}); esperando…"
   sleep 1
 done
-trap 'rm -rf "$LOCK"' EXIT
+trap 'rm -rf "$LOCK" "$LOCK.robo"' EXIT
 
 # --- Residuo de una corrida abortada ------------------------------------------
 #
