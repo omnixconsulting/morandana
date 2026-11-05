@@ -17,7 +17,7 @@
 # Lo que NO comprueba: que el proveedor las tenga cargadas. Eso es revision
 # manual y vive en revisiones-pendientes.md.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 # --- lo unico que cambia por repo ---------------------------------------------
 DIRS="src"          # donde vive el codigo que lee entorno

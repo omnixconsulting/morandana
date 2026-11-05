@@ -6,7 +6,7 @@
 # Revisa únicamente archivos versionados —lo que no está en git no se despliega.
 
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 fallos=0
 yo=':!scripts/guardia-secretos.sh'

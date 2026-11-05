@@ -28,7 +28,7 @@
 # Usa un PGDATA y un puerto TEMPORALES: no toca el datadir del repo ni los
 # puertos de los repos hermanos.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 fallos=0
@@ -226,6 +226,7 @@ echo 'Arnes del puerto por arbol de trabajo:'
 
 # Se le PREGUNTA al script (`--puerto`), no se recalcula: una copia del calculo
 # aqui haria que la prueba pase aunque el script se equivoque.
+# shellcheck disable=SC1007  # los dos `VAR=` vacios son a proposito: le quitan al hijo el puerto y el PGDATA heredados
 puerto_de() { ( cd "$1" && PGPUERTO= PGDATA= ./scripts/base-local.sh --puerto 2>/dev/null ); }
 
 REPO="$TMP/repo"

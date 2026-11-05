@@ -10,7 +10,7 @@
 # el despliegue. Aquí se fija que la declaración no desaparezca del repo.
 
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 exec python3 - "$@" <<'PY'
 import json, os, re, sys, glob

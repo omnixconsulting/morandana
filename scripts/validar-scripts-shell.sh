@@ -8,26 +8,39 @@
 # los `.sh`. Medido el 15-oct-2026 en los diez repos del equipo: 358 hallazgos,
 # ninguno visible para ninguna puerta.
 #
-# POR QUE CON TRINQUETE Y NO EN CERO
-# Aqui la deuda no cabe en un PR: varios hallazgos son SC2015 (`A && B || C`),
-# que cambia el flujo de control y pide leerse caso por caso. Apagar el chequeo
-# lo vuelve decorativo; exigir cero bloquea el repo. El numero no puede subir, y
-# cada limpieza baja el tope aqui, en el mismo PR. Mismo trato que el lint.
+# EL TRINQUETE LLEGO A CERO EL 5-NOV-2026
+# Nacio con tope porque la deuda no cabia en un PR. Al leer los 21 caso por caso,
+# 11 eran un defecto real y el resto se reparte entre arreglos y falsos positivos:
 #
-# LA REVISION 1 NO LLEVA TRINQUETE, Y ES LA QUE MAS IMPORTA
-# Un comentario que EMPIEZA con `shellcheck ` y no trae `clave=valor` se lee como
-# directiva, es error duro (SC1072/SC1073) y shellcheck DEJA DE ANALIZAR EL RESTO
-# DEL ARCHIVO. Con un trinquete eso es peor que sin el: un archivo cegado hace
-# BAJAR el conteo, asi que parece progreso e invita a bajar el tope. Por eso va
-# primero y falla siempre.
+#   11 SC2164  `cd ... || exit 1` faltante en la primera linea de 11 scripts.
+#              Con `set -uo pipefail` y sin `-e`, un `cd` que falla NO
+#              detiene el script: el validador corre en el directorio de
+#              quien lo invoco y sale en verde sin mirar nada. El mismo
+#              defecto que `jerrymedrano` resolvio el 15-oct-2026 y el
+#              landing el 5-nov; aqui llego por propagacion, no solo.
 #
-# Paso de verdad: en `mise`, el comentario que ADVERTIA de esta trampa quedo con
-# la palabra al inicio al partirse por el ancho de linea, y cegaba el validador
-# de workflows de la linea 133 en adelante, tapando dos hallazgos reales.
+#   10 falsos  reales como aviso y falsos aqui: SC2016 (mensajes que imprimen
+#              `$VAR` o acentos graves literales, y programas de `node -e`
+#              cuyos `$` son de JavaScript), SC2012 (nombres que genera una
+#              herramienta, sin espacios) y SC1007 (`VAR=` vacio para
+#              quitarle una variable heredada al proceso hijo). Cada uno
+#              queda anotado CON SU RAZON en su propia linea, no silenciado a
+#              ciegas.
+#
+# Y las asignaciones con forma `A && B || C` de `arnes-secretos.sh` pasaron a
+# if/else explicito: eran la unica fuente del SC2015 que el runner ve y esta
+# maquina no.
+#
+# El numero no puede subir. En cero eso significa: cualquier hallazgo nuevo es
+# rojo, y si es un falso positivo se anota con su razon, no se sube el tope.
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
-TOPE=${TOPE:-21}
+# El tope lo manda el conteo del CI, NO el local: shellcheck no reporta igual en
+# las dos partes, y una diferencia de version pone el PR en rojo por la
+# herramienta y no por el codigo. Si el CI imprime mas que este numero, ESE es el
+# piso: subelo con el numero que imprima y deja escrito que hallazgo era.
+TOPE=${TOPE:-0}
 
 if ! command -v shellcheck >/dev/null 2>&1; then
   if [ -n "${GITHUB_ACTIONS:-}" ]; then

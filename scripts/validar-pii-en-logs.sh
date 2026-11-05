@@ -21,7 +21,7 @@
 # y no es una fuga.
 
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 exec python3 - "$@" <<'PY'
 import re, subprocess, sys

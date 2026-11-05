@@ -12,7 +12,7 @@
 # que atrapa el caso que BLOQUEA PRs: un check requerido que ningun workflow
 # produce.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 RAIZ=$PWD
 
 fixture=$(mktemp -d); trap 'rm -rf "$fixture"' EXIT

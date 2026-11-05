@@ -18,7 +18,7 @@
 # el guion no se revisaba. Ninguno de los diez repos lo escribe asi, asi que la
 # ceguera no se veia; la encontro el arnes de este validador.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 dir=.github/workflows
 [ -d "$dir" ] || { echo 'Validador de workflows: no hay .github/workflows.'; exit 0; }
@@ -159,6 +159,7 @@ if AL=$(./scripts/traer-actionlint.sh 2>"$err") && [ -n "$AL" ]; then
     fi
   fi
 else
+  # shellcheck disable=SC2016  # los acentos graves van literales: es el texto que se imprime
   echo '::warning::No se pudo traer actionlint: la tercera comprobacion NO corrio. Los `if:` y los `run:` si se revisaron.'
   [ -s "$err" ] && sed 's/^/    /' "$err"
   # Un checksum que no coincide no es una falla de red: es una puerta de calidad
@@ -395,5 +396,6 @@ if [ -n "$muertas" ]; then
   fallos=1
 fi
 
+# shellcheck disable=SC2016  # los acentos graves van literales: es el texto que se imprime
 [ "$fallos" -eq 0 ] && echo "Validador de workflows: $n bloque(s) \`run:\` validos, "'`if:`'" con delimitadores cerrados, actions fijadas por SHA, jobs con timeout, y zizmor sin hallazgos medium o mas"
 exit "$fallos"
