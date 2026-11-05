@@ -19,7 +19,7 @@
 #
 # No modifica el repo: todo pasa en un directorio temporal que se borra al salir.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 RAIZ=$PWD
 
 # Se leen TODAS las variables de patrones, no solo `LLAVES`. stellium tiene los
@@ -31,7 +31,8 @@ LLAVES=$(sed -n "s/^LLAVES[A-Z_]*='\(.*\)'$/\1/p" scripts/guardia-secretos.sh | 
 [ -n "$LLAVES" ] || { echo '::error::No pude leer ninguna lista LLAVES* de scripts/guardia-secretos.sh.'; exit 1; }
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
-cd "$TMP"; git init -q .
+cd "$TMP" || exit 1   # sin esta guarda, un cd fallido deja el `git init` en el REPO
+git init -q .
 
 # El relleno tiene que PARECER una llave: aleatorio, no un alfabeto en orden.
 # gitleaks filtra por entropia, asi que un relleno secuencial de 30 caracteres da
@@ -107,4 +108,4 @@ if [ "$fallos" -ne 0 ]; then
   echo '::error::Los dos motores no atrapan lo mismo. Una de las dos listas se quedo atras.'
   exit 1
 fi
-echo "Arnes de secretos: los dos motores atrapan los $(echo $TIPOS | wc -w | tr -d ' ') tipos, y ninguna trampa."
+echo "Arnes de secretos: los dos motores atrapan los $(wc -w <<<"$TIPOS" | tr -d ' ') tipos, y ninguna trampa."
