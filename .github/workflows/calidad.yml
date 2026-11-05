@@ -83,6 +83,15 @@ jobs:
       - name: Arnes de llaves plantadas
         run: ./scripts/arnes-secretos.sh
 
+      # Y el TERCER lugar donde vivia la lista de tipos: `.gitleaks.toml`, que
+      # consume un binario y no puede leer el contrato. La guardia del arbol y el
+      # arnes de arriba ya LEEN de contracts/llaves-conocidas.txt; esto exige que
+      # el TOML cubra exactamente esas filas, en los DOS sentidos. Sin esta
+      # puerta, una regla del TOML que el contrato no declara deja a la guardia
+      # sin buscarla y al arnes sin plantarla, en verde.
+      - name: Contrato de llaves conocidas
+        run: npm run llaves
+
       # LOS WORKFLOWS DE VERDAD, POR ACTIONLINT Y SHELLCHECK
       #
       # Esto no estaba. El unico lugar de CI que invocaba al validador era su
