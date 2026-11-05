@@ -18,7 +18,7 @@
 # la extensión no es decorativa.
 
 set -euo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 # La version fijada y su checksum viven en scripts/traer-gitleaks.sh, que es la
 # unica implementacion: el arnes de llaves plantadas necesita el mismo binario, y
