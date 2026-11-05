@@ -313,7 +313,7 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
     }
   ' "$f") || { echo "::error::$f: incumple una regla estructural del estandar."; printf "%s\n" "$salida"; fallos=1; }
   # El AVISO sale por stdout con exit 0, asi que se imprime aparte.
-  [ -n "${salida:-}" ] && printf "%s\n" "$salida" | grep -q 'AVISO' && printf "%s\n" "$salida" | grep 'AVISO' | sed "s|^|$f|"
+  [ -n "${salida:-}" ] && grep -q 'AVISO' <<<"$salida" && printf "%s\n" "$salida" | grep 'AVISO' | sed "s|^|$f|"
 done
 
 # ---------------------------------------------------------------------------

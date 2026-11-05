@@ -59,7 +59,7 @@ plantar() {
     fi
     return
   fi
-  if [ "$codigo" -ne 0 ] && printf '%s' "$salida" | grep -qF -e "$esperado"; then
+  if [ "$codigo" -ne 0 ] && grep -qF -e "$esperado" <<<"$salida"; then
     printf '  ok   %-28s atrapado: %s\n' "$nombre" "$esperado"
   else
     printf '  MAL  %-28s NO se atrapo (codigo %s). Se esperaba: %s\n' "$nombre" "$codigo" "$esperado"
