@@ -22,7 +22,7 @@
 # NO VA EN `npm run verificar`. La Puerta 1 corre sin red y sin credenciales de
 # produccion; esto necesita las dos. Se corre a mano, y mas adelante por cron.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 # Semilla de prueba: con un archivo como argumento se evalua ese JSON en vez de
 # consultar produccion. Es como se comprueba que el detector detecta, sin tocar
@@ -35,6 +35,7 @@ else
   if [ ! -f supabase/.temp/project-ref ]; then
     echo '::error::Este repo NO esta enlazado a un proyecto de Supabase en esta maquina.'
     echo '  El chequeo no corrio, que no es lo mismo que «sin deriva». Enlazalo con'
+    # shellcheck disable=SC2016  # los acentos graves van literales: es el texto que se imprime
     echo '  `supabase link --project-ref <ref>` y vuelve a correrlo.'
     exit 1
   fi
@@ -60,6 +61,7 @@ else
     echo '  No es lo mismo que «sin deriva»: puede haber migraciones sin aplicar.'
     if [ -n "$crudo" ]; then
       echo '  El CLI contesto algo que no es el JSON esperado. Si cambio su formato de'
+      # shellcheck disable=SC2016  # los acentos graves van literales: es el texto que se imprime
       echo '  salida otra vez, la bandera `--output-format json` de este script es lo'
       echo '  primero que hay que revisar. Primera linea de lo que devolvio:'
       printf '%s\n' "$crudo" | head -1 | sed 's/^/    /'
@@ -101,6 +103,7 @@ if [ -n "$sin" ]; then
   echo "::error::Migraciones del repo SIN APLICAR en produccion:$sin"
   echo '  Produccion no es lo que el repo dice que es, y las pruebas de CI no lo'
   echo '  ven: corren contra una base levantada con todas las migraciones.'
+  # shellcheck disable=SC2016  # los acentos graves van literales: es el texto que se imprime
   echo '  Aplicar con `supabase db push` desde main, despues de revisar que hace'
   echo '  cada una.'
   fallos=1

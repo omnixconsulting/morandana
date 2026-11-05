@@ -15,7 +15,7 @@
 #      leer produccion, y los siete casos de parseo no tocaban esa linea.
 #      Un arnes que cubre todo menos la linea que se rompe no es un arnes.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 fixture=$(mktemp -d); trap 'rm -rf "$fixture"' EXIT
 fallos=0; casos=0

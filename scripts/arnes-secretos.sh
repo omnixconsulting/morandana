@@ -88,16 +88,16 @@ fi
 fallos=0
 printf '  %-12s %-10s %s\n' TIPO arbol historial
 for t in $TIPOS; do
-  a=$(grep -qx "$t" <<<"$arbol" && echo si || echo NO)
+  if grep -qx "$t" <<<"$arbol"; then a=si; else a=NO; fi
   if [ "$GL_CORRIO" = 1 ]; then
-    g=$(grep -qx "$t" <<<"$gl" && echo si || echo NO)
+    if grep -qx "$t" <<<"$gl"; then g=si; else g=NO; fi
   else g="(sin correr)"; fi
   printf '  %-12s %-10s %s\n' "$t" "$a" "$g"
   [ "$a" = NO ] && fallos=1
   [ "$g" = NO ] && fallos=1
 done
 for t in $TRAMPAS; do
-  a=$(grep -qx "$t" <<<"$arbol" && echo CASA || echo no)
+  if grep -qx "$t" <<<"$arbol"; then a=CASA; else a=no; fi
   [ "$a" = CASA ] && { echo "::error::La trampa $t casa en el arbol: falso positivo."; fallos=1; }
 done
 

@@ -16,7 +16,7 @@
 # datadir del repo ni el puerto de ningún otro.
 
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 RAIZ="$PWD"
 SCRIPT="$RAIZ/scripts/base-local.sh"
 
@@ -28,6 +28,7 @@ if [ -x /opt/homebrew/opt/postgresql@17/bin/pg_ctl ]; then
 elif command -v pg_ctl >/dev/null 2>&1; then
   BIN="$(dirname "$(command -v pg_ctl)")"
 else
+  # shellcheck disable=SC2012  # rutas fijas del sistema: el glob ya las expande y hace falta ordenarlas por version
   BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
 fi
 if [ -z "${BIN:-}" ] || [ ! -x "$BIN/pg_ctl" ]; then

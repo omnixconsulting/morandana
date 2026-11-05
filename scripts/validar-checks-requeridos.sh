@@ -26,7 +26,7 @@
 # Si no se puede leer, el chequeo 2 avisa y NO falla. El 1 es el que atrapa el
 # modo de falla que bloquea PRs, y ese si corre en CI.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
 CONTRATO=contracts/checks-requeridos.txt
 # El repo sale del remoto y no escrito a mano: estos scripts viven en siete
@@ -107,6 +107,7 @@ else
   exigidos=''
 fi
 if [ -z "$exigidos" ]; then
+  # shellcheck disable=SC2016  # los acentos graves van literales: es el texto que se imprime
   echo '::notice::no se pudo leer la proteccion de rama (hace falta `administration: read`).'
   echo '  El chequeo 1 si corrio. Este queda sin comprobar, no en verde.'
 else

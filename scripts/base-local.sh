@@ -79,6 +79,7 @@ if [ -x /opt/homebrew/opt/postgresql@17/bin/pg_ctl ]; then
 elif command -v pg_ctl >/dev/null 2>&1; then
   BIN="$(dirname "$(command -v pg_ctl)")"
 else
+  # shellcheck disable=SC2012  # rutas fijas del sistema: el glob ya las expande y hace falta ordenarlas por version
   BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
 fi
 [ -n "${BIN:-}" ] || { echo "No encuentro initdb/pg_ctl. Instala Postgres 17." >&2; exit 1; }
