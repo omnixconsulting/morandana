@@ -15,7 +15,7 @@
 # exige el mensaje especifico, no un exit distinto de cero: asi un fallo de
 # actionlint por otra razon no se puede confundir con el hallazgo que se busca.
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 RAIZ=$PWD
 
 SHA=0123456789abcdef0123456789abcdef01234567   # 40 hex, no resuelve a nada real
@@ -74,7 +74,7 @@ plantar valido.yml VERDE <<YAML
 name: valido
 on:
   pull_request:
-# Sin esto zizmor marca `excessive-permissions` (medium) y el caso dejaria de
+# Sin esto zizmor marca \`excessive-permissions\` (medium) y el caso dejaria de
 # estar en verde por una razon que no es la que mide.
 permissions:
   contents: read
@@ -83,8 +83,8 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
-      # `persist-credentials: false` no es decoracion del fixture: sin el, zizmor
-      # marca `artipacked` (medium) y este caso dejaria de estar en verde. El
+      # \`persist-credentials: false\` no es decoracion del fixture: sin el, zizmor
+      # marca \`artipacked\` (medium) y este caso dejaria de estar en verde. El
       # propio estandar lo exige en los 32 checkouts del portafolio.
       - uses: actions/checkout@$SHA # v5
         with:
@@ -116,7 +116,7 @@ YAML
 plantar zizmor-ignorado.yml VERDE <<YAML
 # El mismo hallazgo, con la excepcion declarada en su linea. Prueba que la via de
 # escape funciona: sin ella, la unica salida para una excepcion legitima
-# --`tj-actions/changed-files` exige el token-- seria apagar el chequeo entero.
+# --\`tj-actions/changed-files\` exige el token-- seria apagar el chequeo entero.
 name: credencial persistida pero declarada
 on:
   pull_request:
@@ -142,6 +142,7 @@ jobs:
       - uses: actions/checkout@v4
 YAML
 
+# shellcheck disable=SC2016  # el marcador va literal: es la aguja que grep -F busca en la salida
 plantar sin-timeout.yml 'sin `timeout-minutes:`' <<YAML
 name: sin timeout
 on:
@@ -156,8 +157,10 @@ YAML
 # EL BLOQUE `run:` NO TERMINA EN LA PRIMERA LINEA EN BLANCO
 # Hasta el 17-oct-2026 la extraccion exigia que la linea tuviera contenido, asi
 # que cortaba el bloque en el primer blanco y **un error de sintaxis despues de
-# un blanco no se revisaba nunca**. Este fixture tiene el `fi` huerfano DESPUES
-# del blanco: si la extraccion vuelve a cortar ahi, pasa en verde.
+# un blanco no se revisaba nunca**. Y 36 de los 76 bloques `run: |` del
+# portafolio traen un blanco adentro --medido el 5-nov-2026 en los nueve repos--,
+# asi que no es un caso de laboratorio. Este fixture tiene el `fi` huerfano
+# DESPUES del blanco: si la extraccion vuelve a cortar ahi, pasa en verde.
 plantar blanco-y-luego-roto.yml 'no es shell valido' <<YAML
 name: roto despues de un blanco
 on:
@@ -177,11 +180,13 @@ YAML
 # Dejo de casar en silencio al pasar a squash (~3-oct-2026) y durante dos semanas
 # las puertas se repitieron en `main` sin que nadie lo decidiera.
 #
-# EL FIXTURE DECLARA `permissions:` A PROPOSITO, y la aguja es texto del mensaje
-# de error, sin metacaracteres. Sin las dos cosas, zizmor marcaba el fixture por
-# OTRA razon y CITABA la linea del if en su salida: la coincidencia era con la
-# cita de zizmor y este caso pasaba sin probar nada. Comprobado neutralizando la
-# guarda: seguia en verde.
+# EL FIXTURE DECLARA `permissions:` A PROPOSITO, y la aguja es el texto del
+# mensaje de error, no `head_commit.message` a secas. Sin las dos cosas, zizmor
+# marcaba el fixture por OTRA razon y CITABA la linea del if en su salida: la
+# coincidencia era con la cita de zizmor y este caso pasaba sin probar nada. La
+# aguja es texto del mensaje de error, sin metacaracteres, para que no pueda
+# casar con una cita del codigo fuente.
+# Comprobado neutralizando la guarda: seguia en verde.
 plantar senal-muerta.yml 'que no distingue un merge de un push directo' <<YAML
 name: decide con el mensaje del commit
 on:
