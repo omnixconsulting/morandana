@@ -95,8 +95,62 @@ else
   ROOTFUL=0
 fi
 
-stop_server() { como_pg "$BIN/pg_ctl" -D "$PGDATA" -m fast stop >/dev/null 2>&1 || true; }
-if [ "${1:-}" = "--stop" ]; then stop_server; echo "base-local: servidor detenido."; exit 0; fi
+# --- `--stop`, que NO SE CREE A SI MISMO --------------------------------------
+#
+# Hasta el 5-nov-2026 esto eran dos lineas: un `pg_ctl stop` con
+# `>/dev/null 2>&1 || true` y un `echo "base-local: servidor detenido."` SIN
+# CONDICION. Decia exactamente lo mismo en los tres casos --apago, no habia nada
+# que apagar, y pg_ctl fallo--, asi que el mensaje no era evidencia de nada.
+#
+# Se detecto al borrar un arbol de trabajo: `--stop` dijo «servidor detenido» y
+# el postmaster seguia escuchando, con su datadir dentro del directorio que
+# estaba a punto de desaparecer. Un datadir que se borra con el postmaster vivo
+# deja el proceso escuchando sobre un directorio que ya no existe, y el puerto
+# tomado para la siguiente corrida.
+#
+# LA COMPROBACION DE DESPUES NO LA HACE pg_ctl, Y ESO ES EL PUNTO.
+# Si pg_ctl esta roto, o apunta a otra version mayor que la del datadir, su
+# `status` miente igual que su `stop`: preguntarle si funciono es preguntarle al
+# programa que se esta auditando. Se miran dos señales independientes de el:
+# quien escucha el puerto (y si su linea de comando nombra NUESTRO datadir), y
+# el pidfile del datadir con `kill -0`. La primera no existe sin `lsof`; la
+# segunda atrapa ademas al postmaster que quedo vivo pero ya no escucha.
+mi_servidor_vivo() {
+  local p
+  if command -v lsof >/dev/null 2>&1; then
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      case "$(ps -o command= -p "$p" 2>/dev/null)" in
+        *"-D $PGDATA"*) return 0 ;;
+      esac
+    done <<< "$(lsof -tiTCP:"$PUERTO" -sTCP:LISTEN 2>/dev/null)"
+  fi
+  [ -f "$PGDATA/postmaster.pid" ] || return 1
+  p="$(head -1 "$PGDATA/postmaster.pid" 2>/dev/null)"
+  case "$p" in ''|*[!0-9]*) return 1 ;; esac
+  kill -0 "$p" 2>/dev/null || return 1
+  case "$(ps -o comm= -p "$p" 2>/dev/null)" in *postgres*) return 0 ;; esac
+  return 1
+}
+
+if [ "${1:-}" = "--stop" ]; then
+  if ! mi_servidor_vivo; then
+    echo "base-local: este arbol no tenia servidor arriba (puerto $PUERTO). Nada que detener."
+    exit 0
+  fi
+  salida="$(como_pg "$BIN/pg_ctl" -D "$PGDATA" -m fast stop 2>&1)" || true
+  if mi_servidor_vivo; then
+    [ -n "$salida" ] && printf '%s\n' "$salida" >&2
+    echo "::error::base-local: el servidor de este arbol SIGUE ARRIBA despues de pedirle que pare." >&2
+    echo "  puerto $PUERTO · datadir $PGDATA" >&2
+    echo "  Mira quien es antes de borrar nada:" >&2
+    echo "    lsof -nP -iTCP:$PUERTO -sTCP:LISTEN" >&2
+    echo "  No lo mates con -9: deja la base en recuperacion y puede perder WAL sin vaciar." >&2
+    exit 1
+  fi
+  echo "base-local: servidor detenido (puerto $PUERTO)."
+  exit 0
+fi
 
 #
 # El puerto, antes de arrancar. CADA REPO TIENE EL SUYO desde el 15-oct-2026.
