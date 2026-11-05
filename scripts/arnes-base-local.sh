@@ -207,10 +207,32 @@ else
 fi
 # LA aserción del caso: el postmaster ya no está. Se comprueba contra el proceso,
 # no contra el mensaje, que es justo lo que no se podía creer.
-if ! kill -0 "$PID_PARA" 2>/dev/null; then
+#
+# Y SE ESPERA, PORQUE MIRAR UNA VEZ ERA UNA VENTANA DE CARRERA
+# `pg_ctl -m fast stop` da por terminado el apagado cuando desaparece el pidfile,
+# y el postmaster puede tardar un instante mas en salir del todo. La primera
+# version de este caso miraba `kill -0` UNA sola vez, inmediatamente: en una Mac
+# nunca se veia, y en un runner cargado si. Lo atrapo el CI de shikomi el
+# 5-nov-2026 --corrida 42106340879, «el postmaster SIGUE VIVO (PID 3681)»-- con
+# el mismo arnes en verde en los otros cinco repos. Un arnes que pasa en local y
+# falla en CI es una ventana de carrera, no un flake.
+#
+# La espera es acotada y NO debilita la asercion: el caso 5d, donde el servidor
+# se queda arriba de verdad porque pg_ctl falla, sigue fallando aqui porque ahi
+# el proceso no se va nunca.
+murio() {
+  local pid="$1" intentos=50          # 50 x 0.2 s = hasta 10 s
+  while [ "$intentos" -gt 0 ]; do
+    kill -0 "$pid" 2>/dev/null || return 0
+    sleep 0.2
+    intentos=$((intentos - 1))
+  done
+  return 1
+}
+if murio "$PID_PARA"; then
   ok "y el postmaster murió de verdad (PID $PID_PARA)"
 else
-  mal "el postmaster SIGUE VIVO después del «servidor detenido» (PID $PID_PARA)"
+  mal "el postmaster SIGUE VIVO 10 s después del «servidor detenido» (PID $PID_PARA)"
 fi
 
 # 5c) Repetirlo sobre el mismo datadir, ya apagado: tampoco puede decir que apagó.
