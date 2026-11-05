@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pasa los scripts de scripts/ por shellcheck, con trinquete.
+# Pasa los scripts de scripts/ por shellcheck. El piso es cero y no hay
+# variable que lo mueva.
 #
 # POR QUE EXISTE
 # Las puertas de este repo revisan el codigo de la app, los contratos y los
@@ -33,14 +34,20 @@
 #
 # El numero no puede subir. En cero eso significa: cualquier hallazgo nuevo es
 # rojo, y si es un falso positivo se anota con su razon, no se sube el tope.
+#
+# Y EL 5-NOV-2026 SE QUITO LA VARIABLE
+# Mientras el tope fue un numero sobre cero, `TOPE` servia para algo legitimo:
+# medir en el CI y asentar ahi el piso, porque las versiones de shellcheck no
+# reportan igual en las dos partes. En cero ya no mide nada. Lo unico que le
+# quedaba era la via para SUBIRLO --un `TOPE=3` delante de la invocacion, o un
+# `${TOPE:-3}` en el diff-- y eso es exactamente lo que esta puerta existe para
+# impedir. Una holgura que nadie necesita es una puerta de atras.
+#
+# Asi que si el CI ve un hallazgo que esta maquina no ve, el arreglo es anotarlo
+# con su SC y su razon, que queda en el diff y se lee. No reabrir la holgura
+# para todos los demas scripts a la vez.
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
-
-# El tope lo manda el conteo del CI, NO el local: shellcheck no reporta igual en
-# las dos partes, y una diferencia de version pone el PR en rojo por la
-# herramienta y no por el codigo. Si el CI imprime mas que este numero, ESE es el
-# piso: subelo con el numero que imprima y deja escrito que hallazgo era.
-TOPE=${TOPE:-0}
 
 if ! command -v shellcheck >/dev/null 2>&1; then
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
@@ -53,34 +60,31 @@ if ! command -v shellcheck >/dev/null 2>&1; then
   exit 0
 fi
 
-# 1 · Directivas mal formadas. Sin trinquete y antes del conteo.
+# 1 · Directivas mal formadas. Va antes del conteo: una directiva rota apaga el
+#     analisis del archivo, y entonces el conteo sale en cero sin haber mirado.
 malas=$(grep -rnE '^[[:space:]]*#[[:space:]]*shellcheck[[:space:]]+' scripts/ 2>/dev/null \
   | grep -vE 'shellcheck[[:space:]]+(disable|enable|source|shell|external-sources)=' || true)
 if [ -n "$malas" ]; then
   echo '::error::Hay un comentario que empieza con «shellcheck » y no es una directiva valida.'
   echo "$malas"
   echo '  Eso es SC1072/SC1073 y apaga el analisis del RESTO del archivo, sin fallar.'
-  echo '  Ojo: un archivo cegado BAJA el conteo, asi que parece progreso contra el tope.'
+  echo '  Ojo: un archivo cegado no suma hallazgos, asi que esta puerta sale verde sin leerlo.'
   echo '  Reordena la frase para que «shellcheck» no sea la primera palabra tras el #.'
   exit 1
 fi
 
-# 2 · El conteo, contra el trinquete.
+# 2 · Los hallazgos. Cualquiera es rojo.
 salida=$(shellcheck -f gcc scripts/*.sh 2>/dev/null || true)
 actual=$(printf '%s' "$salida" | grep -c . || true)
 
-echo "Scripts de shell: $actual hallazgo(s) de shellcheck (tope: $TOPE)"
-
-if [ "$actual" -gt "$TOPE" ]; then
-  printf '%s\n' "$salida" | head -20
-  echo "::error::Los scripts empeoraron: $actual hallazgos contra un tope de $TOPE."
+if [ "$actual" -ne 0 ]; then
+  printf '%s\n' "$salida"
+  echo "::error::shellcheck encontro $actual hallazgo(s) en scripts/."
   echo '  Si alguno es un falso positivo, anotalo con «# shellcheck disable=SCxxxx»'
   echo '  y una linea arriba explicando por que. No lo silencies sin la razon.'
   exit 1
 fi
 
-if [ "$actual" -lt "$TOPE" ]; then
-  echo "::notice::Bajaron los hallazgos ($actual < $TOPE). Baja TOPE en scripts/validar-scripts-shell.sh."
-fi
-
+revisados=$(find scripts -maxdepth 1 -name '*.sh' | wc -l | tr -d ' ')
+echo "Scripts de shell: $revisados revisados por shellcheck, sin hallazgos."
 exit 0
