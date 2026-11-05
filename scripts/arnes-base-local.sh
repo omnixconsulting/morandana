@@ -87,12 +87,12 @@ if [ "$codigo" -ne 0 ]; then
 else
   mal "clon nuevo con el puerto ocupado: el script NO se negó"
 fi
-if printf '%s' "$salida" | grep -qF "no es el de este repo"; then
+if grep -qF "no es el de este repo" <<<"$salida"; then
   ok "el mensaje dice que el puerto es de otro repo"
 else
   mal "el mensaje no explica de quién es el puerto"
 fi
-if printf '%s' "$salida" | grep -qF -- "$AJENO"; then
+if grep -qF -- "$AJENO" <<<"$salida"; then
   ok "el mensaje nombra el datadir ajeno"
 else
   mal "el mensaje no nombra el datadir ajeno"
@@ -113,7 +113,7 @@ salida="$(corre "$RANCIO")"; codigo=$?
 # Mide el MENSAJE, no solo el código: con el `kill -9` viejo este caso también
 # salía distinto de cero, pero por «could not start server» después de haber
 # matado al ajeno. El código de salida no distingue las dos cosas.
-if { [ "$codigo" -ne 0 ] && printf '%s' "$salida" | grep -qF "no es el de este repo"; }; then
+if { [ "$codigo" -ne 0 ] && grep -qF "no es el de este repo" <<<"$salida"; }; then
   ok "pidfile rancio y puerto ajeno: se niega explicándolo, no con «could not start server»"
 else
   mal "pidfile rancio: no se negó con el mensaje del chequeo de puerto"
@@ -127,7 +127,7 @@ fi
 # --- 3. Sin falso positivo: el postmaster del puerto es NUESTRO -------------
 # Mismo datadir que el "ajeno": desde el punto de vista del script, es suyo.
 salida="$(corre "$AJENO")"
-if printf '%s' "$salida" | grep -qF "no es el de este repo"; then
+if grep -qF "no es el de este repo" <<<"$salida"; then
   mal "falso positivo: se negó aunque el postmaster del puerto es suyo"
 else
   ok "no se niega cuando el postmaster del puerto es de su propio datadir"
@@ -137,7 +137,7 @@ fi
 "$BIN/pg_ctl" -D "$AJENO" -m fast stop >/dev/null 2>&1
 sleep 1
 salida="$(corre "$TMP/libre")"
-if printf '%s' "$salida" | grep -qF "no es el de este repo"; then
+if grep -qF "no es el de este repo" <<<"$salida"; then
   mal "falso positivo: se negó con el puerto libre"
 else
   ok "con el puerto libre no se niega"

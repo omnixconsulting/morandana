@@ -78,7 +78,7 @@ presentes=$(node -e '
 
 faltan=''
 while IFS= read -r c; do
-  printf '%s\n' "$presentes" | grep -qxF -- "$c" || faltan="$faltan$c"$'\n'
+  grep -qxF -- "$c" <<<"$presentes" || faltan="$faltan$c"$'\n'
 done <<< "$declarados"
 
 if [ -n "$faltan" ]; then

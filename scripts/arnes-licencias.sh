@@ -33,7 +33,7 @@ caso() {
     echo "  ✗ $nombre — el validador falló y debía pasar:"; echo "$salida" | sed 's/^/      /'
     fallos=$((fallos+1)); return
   fi
-  if [ -n "$esperado" ] && ! printf '%s' "$salida" | grep -qF -e "$esperado"; then
+  if [ -n "$esperado" ] && ! grep -qF -e "$esperado" <<<"$salida"; then
     echo "  ✗ $nombre — falló, pero no por lo esperado («$esperado»):"
     echo "$salida" | sed 's/^/      /'; fallos=$((fallos+1)); return
   fi

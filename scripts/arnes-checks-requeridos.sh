@@ -79,7 +79,7 @@ exige() {
     echo "::error::$titulo: el validador PASO. Esta ciego a este caso."
     fallos=1; return
   fi
-  if ! printf '%s' "$salida" | grep -qF -- "$texto"; then
+  if ! grep -qF -- "$texto" <<<"$salida"; then
     echo "::error::$titulo: fallo, pero no por «$texto»:"
     printf '%s\n' "$salida" | sed 's/^/    /'
     fallos=1
@@ -128,7 +128,7 @@ if [ "$codigo" -ne 0 ]; then
 else
   echo '  ok   el fixture intacto pasa'
   # Y avisa que no pudo leer la proteccion, en vez de callarlo.
-  if ! printf '%s' "$salida" | grep -qF 'no se pudo leer la proteccion'; then
+  if ! grep -qF 'no se pudo leer la proteccion' <<<"$salida"; then
     echo '::error::con la proteccion ilegible deberia AVISARLO, y no lo dijo.'
     fallos=1
   else
@@ -148,7 +148,7 @@ if [ "$codigo" -ne 0 ]; then
   echo '::error::con un gh que falla escupiendo un error, el validador FALLA en vez de avisar.'
   printf '%s\n' "$salida" | sed 's/^/    /'
   fallos=1
-elif ! printf '%s' "$salida" | grep -qF 'no se pudo leer la proteccion'; then
+elif ! grep -qF 'no se pudo leer la proteccion' <<<"$salida"; then
   echo '::error::con un gh que falla escupiendo un error, deberia AVISARLO.'
   printf '%s\n' "$salida" | sed 's/^/    /'
   fallos=1

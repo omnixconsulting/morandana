@@ -124,7 +124,7 @@ sleep 30 & RETEN=$!
 ln -s "$RETEN" "$PGDATA.lock"
 salida=$(BASE_LOCAL_ESPERA=2 ./scripts/base-local.sh 2>&1); codigo=$?
 kill $RETEN 2>/dev/null; wait $RETEN 2>/dev/null
-if [ "$codigo" -ne 0 ] && printf '%s' "$salida" | grep -q 'levantando esta base'; then
+if [ "$codigo" -ne 0 ] && grep -q 'levantando esta base' <<<"$salida"; then
   echo '  ok   un candado que no suelta: espera y falla diciendo de quien es'
 else
   echo "  MAL  no respeto el tope de espera (exit $codigo)"
@@ -137,7 +137,7 @@ rm -rf "$PGDATA" "$PGDATA.lock"
 # Un PID que seguro no existe: el maximo del sistema mas uno nunca esta vivo.
 ln -s 99999999 "$PGDATA.lock"
 salida=$(./scripts/base-local.sh 2>&1); codigo=$?
-if [ "$codigo" -eq 0 ] && printf '%s' "$salida" | grep -q 'huerfano\|huérfano'; then
+if [ "$codigo" -eq 0 ] && grep -q 'huerfano\|huérfano' <<<"$salida"; then
   echo '  ok   un candado de un proceso muerto se reutiliza, no bloquea'
 else
   echo "  MAL  un candado huerfano dejo el script atorado (exit $codigo)"
@@ -164,7 +164,7 @@ apagar
 rm -rf "$PGDATA" "$PGDATA.lock"
 mkdir -p "$PGDATA.lock"
 salida=$(BASE_LOCAL_ESPERA=2 ./scripts/base-local.sh 2>&1); codigo=$?
-if [ "$codigo" -ne 0 ] && ! printf '%s' "$salida" | grep -q 'huerfano\|huérfano'; then
+if [ "$codigo" -ne 0 ] && ! grep -q 'huerfano\|huérfano' <<<"$salida"; then
   echo '  ok   un candado sin dueno legible se espera, no se roba'
 else
   echo "  MAL  se robo un candado que no pudo atribuir (exit $codigo)"
@@ -183,7 +183,7 @@ rm -rf "$PGDATA" "$PGDATA.lock"
 mkdir -p "$PGDATA.lock"
 echo 99999999 > "$PGDATA.lock/pid"
 salida=$(./scripts/base-local.sh 2>&1); codigo=$?
-if [ "$codigo" -eq 0 ] && printf '%s' "$salida" | grep -q 'huerfano\|huérfano'; then
+if [ "$codigo" -eq 0 ] && grep -q 'huerfano\|huérfano' <<<"$salida"; then
   echo '  ok   un candado viejo con su PID muerto se recicla'
 else
   echo "  MAL  un candado de la forma vieja dejo el script atorado (exit $codigo)"
@@ -201,7 +201,7 @@ rm -rf "$PGDATA" "$PGDATA.lock"
 mkdir -p "$PGDATA/global"
 touch "$PGDATA/PG_VERSION"
 salida=$(./scripts/base-local.sh 2>&1); codigo=$?
-if [ "$codigo" -eq 0 ] && printf '%s' "$salida" | grep -q 'restos de una corrida abortada'; then
+if [ "$codigo" -eq 0 ] && grep -q 'restos de una corrida abortada' <<<"$salida"; then
   echo '  ok   limpia el residuo de una corrida abortada y sigue'
 else
   echo "  MAL  no se recupero de un pgdata a medias (exit $codigo)"

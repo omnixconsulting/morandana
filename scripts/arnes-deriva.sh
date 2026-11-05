@@ -26,7 +26,7 @@ probar() {
   printf '%s' "$json" > "$fixture/estado.json"
   local salida codigo
   salida=$(./scripts/deriva-produccion.sh "$fixture/estado.json" 2>&1); codigo=$?
-  if [ "$codigo" = "$esperado" ] && printf '%s' "$salida" | grep -qF -e "$marcador"; then
+  if [ "$codigo" = "$esperado" ] && grep -qF -e "$marcador" <<<"$salida"; then
     printf '  ok   %-34s exit %s\n' "$nombre" "$codigo"
   else
     printf '  MAL  %-34s exit %s (esperado %s), sin «%s»\n' "$nombre" "$codigo" "$esperado" "$marcador"
@@ -81,7 +81,7 @@ probar_cli() {
   local salida codigo
   salida=$(PATH="$falso:$PATH" ./scripts/deriva-produccion.sh 2>&1); codigo=$?
   [ "$creado" = 1 ] && rm -f supabase/.temp/project-ref
-  if [ "$codigo" = "$esperado" ] && printf '%s' "$salida" | grep -qF -e "$marcador"; then
+  if [ "$codigo" = "$esperado" ] && grep -qF -e "$marcador" <<<"$salida"; then
     printf '  ok   %-34s exit %s\n' "$nombre" "$codigo"
   else
     printf '  MAL  %-34s exit %s (esperado %s), sin «%s»\n' "$nombre" "$codigo" "$esperado" "$marcador"
