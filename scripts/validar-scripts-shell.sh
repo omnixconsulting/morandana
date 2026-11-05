@@ -27,7 +27,7 @@
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 
-TOPE=${TOPE:-25}
+TOPE=${TOPE:-21}
 
 if ! command -v shellcheck >/dev/null 2>&1; then
   if [ -n "${GITHUB_ACTIONS:-}" ]; then
