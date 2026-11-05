@@ -22,13 +22,18 @@ set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 RAIZ=$PWD
 
-# Se leen TODAS las variables de patrones, no solo `LLAVES`. stellium tiene los
-# prefijos de Shopify en su propio `LLAVES_SHOPIFY` porque su mensaje de error es
-# distinto, y un arnes que solo mirara `LLAVES` reportaria cinco tipos perdidos que
-# la guardia si atrapa. Un falso positivo en el arnes cuesta lo mismo que un falso
-# negativo: deja de creerse.
-LLAVES=$(sed -n "s/^LLAVES[A-Z_]*='\(.*\)'$/\1/p" scripts/guardia-secretos.sh | paste -sd'|' -)
-[ -n "$LLAVES" ] || { echo '::error::No pude leer ninguna lista LLAVES* de scripts/guardia-secretos.sh.'; exit 1; }
+# Los patrones salen del CONTRATO, no de la guardia. Este arnes leia antes todas
+# las variables `LLAVES*` de `guardia-secretos.sh` —stellium tenia los prefijos de
+# Shopify en su propio `LLAVES_SHOPIFY`—, y ese acoplamiento era justo la
+# enfermedad: cada repo escribia su lista a mano y el arnes comprobaba la lista
+# local contra si misma, asi que una copia podia quedarse corta sin que nada lo
+# dijera. A `map` le faltaron `shpca_` y `shpsa_` cinco semanas. Ahora los tres
+# lugares leen la misma tabla y el arnes comprueba el CONJUNTO del portafolio.
+# Absoluta: mas abajo este script hace `cd "$TMP"`, y una ruta relativa se rompe ahi.
+CONTRATO="$RAIZ/contracts/llaves-conocidas.txt"
+[ -f "$CONTRATO" ] || { echo "::error::falta $CONTRATO."; exit 1; }
+LLAVES=$(awk -F'\t' '!/^#/ && NF>=3 {print $3}' "$CONTRATO" | sort -u | paste -sd'|' -)
+[ -n "$LLAVES" ] || { echo "::error::$CONTRATO no dio ningun patron."; exit 1; }
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 cd "$TMP" || exit 1   # sin esta guarda, un cd fallido deja el `git init` en el REPO
@@ -43,22 +48,27 @@ git init -q .
 R=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 30)
 plantar() { printf 'k = "%s"\n' "$2" > "$1.txt"; }
 
-# Un archivo por tipo que el portafolio afirma cubrir.
-plantar sb_secret  "sb_secret_$R"
-plantar sk_ant     "sk-ant-$R"
-plantar re         "re_$R"
-# AKIA se arma al vuelo y no literal: un `AKIA` seguido de 16 mayúsculas escrito
-# aqui ES una llave con formato valido, y la guardia del arbol lo marcaria —lo
-# hizo—. Excluir este archivo seria un archivo mas que la guardia deja de mirar.
-AK=$(LC_ALL=C tr -dc 'A-Z0-9' </dev/urandom | head -c 16)
-plantar akia       "AKIA$AK"
-plantar shptka     "shptka_$R"
-plantar shpat      "shpat_$R"
-plantar shpss      "shpss_$R"
-plantar shpca      "shpca_$R"
-plantar shpsa      "shpsa_$R"
-plantar cal_live   "cal_live_$R"
-TIPOS="sb_secret sk_ant re akia shptka shpat shpss shpca shpsa cal_live"
+# Un archivo por FILA del contrato. Antes esta lista estaba escrita a mano aqui,
+# y nada comprobaba que cubriera lo que el portafolio dice reconocer: quitarle un
+# tipo hacia que el arnes pasara en verde con uno menos y lo dijera en el mensaje,
+# pero nada fallaba. Ahora no se puede: lo que se planta ES el contrato.
+TIPOS=$(awk -F'\t' '!/^#/ && NF>=3 {print $1}' "$CONTRATO" | paste -sd' ' -)
+[ -n "$TIPOS" ] || { echo "::error::$CONTRATO no dio ningun tipo."; exit 1; }
+# El relleno respeta la clase que el patron exige. Sin esto, `AKIA` mas un relleno
+# con minusculas no casa con `AKIA[0-9A-Z]{16}`, y el arnes reportaba los DOS
+# motores ciegos cuando el ciego era el fixture.
+relleno() {   # relleno <alfabeto:largo o vacio>
+  local spec="${1:-A-Za-z0-9:30}" abc largo
+  abc=${spec%:*}; largo=${spec##*:}
+  LC_ALL=C tr -dc "$abc" </dev/urandom | head -c "$largo"
+}
+while IFS=$'\t' read -r tipo prefijo _ spec; do
+  case "$tipo" in ''|'#'*) continue ;; esac
+  # Las llaves se arman al vuelo y nunca literales: un prefijo seguido del relleno
+  # ES una llave con formato valido, y escribirla aqui la haria aparecer en el
+  # arbol de este repo, donde la propia guardia la marcaria —lo hizo—.
+  plantar "$tipo" "${prefijo}$(relleno "$spec")"
+done < <(grep -v '^#' "$CONTRATO" | awk -F'\t' 'NF>=3')
 
 # Trampas: no deben casar ninguna.
 plantar t_pre    "pre_$R"          # `re_` sin frontera de palabra

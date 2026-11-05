@@ -1,0 +1,49 @@
+# Las llaves que el portafolio dice saber reconocer. UNA FILA POR PREFIJO.
+#
+#   tipo · prefijo con el que se planta · ERE POSIX para `git grep -E` · [relleno]
+#
+# La cuarta columna es opcional: `alfabeto:largo` para la llave de prueba que
+# planta el arnés. Por omisión `A-Za-z0-9:30`. Hace falta cuando el patrón exige
+# una clase más estrecha: `AKIA[0-9A-Z]{16}` no casa con un relleno que traiga
+# minúsculas, y sin declararlo el arnés plantaba una llave que NINGUNO de los dos
+# motores reconocía — y reportaba a los dos ciegos cuando el ciego era el fixture.
+#
+# POR QUÉ EXISTE
+# El mismo conjunto vivía escrito a mano en TRES lugares: la lista `LLAVES` de
+# `guardia-secretos.sh`, la lista `TIPOS` de `arnes-secretos.sh`, y las reglas de
+# `.gitleaks.toml`. Los tres se mantenían por copia, y se bifurcaron: a `map` le
+# faltaron `shpca_` y `shpsa_` desde el 30-sep-2026 hasta el 4-nov, cinco semanas
+# en las que su guardia no veía dos tipos que su propio gitleaks sí.
+#
+# Ahora la guardia y el arnés LEEN de aquí, y `validar-llaves-conocidas.sh`
+# comprueba que `.gitleaks.toml` cubra exactamente estas filas, en los dos
+# sentidos. Agregar un tipo es editar este archivo; olvidarse de un lugar ya no
+# es posible.
+#
+# POR QUÉ UNA FILA POR PREFIJO Y NO POR PATRÓN
+# gitleaks se salta ramas de una alternación —medido el 26-sep-2026: con
+# `shp(tka|at|ss|ca|sa)_` no ve `shpss_`—, así que necesita una regla por
+# prefijo. El arnés también planta una llave por prefijo, porque es lo que
+# descubrió esa ceguera. El shell en cambio sí maneja la alternación, y por eso
+# varias filas comparten el mismo ERE: la guardia las une sin repetir.
+#
+# POR QUÉ EL ERE NO ES EL REGEX DE GITLEAKS
+# No se pueden compartir. `git grep -E` NO soporta `\b` y **no falla** al
+# encontrarlo: devuelve cero coincidencias. La regla de Resend es `\bre_` en
+# gitleaks (RE2) y `(^|[^A-Za-z0-9_])re_` aquí. Copiar una en la otra apaga la
+# guardia en silencio, y por eso el ERE vive en esta tabla y el RE2 en el TOML,
+# cada uno en su dialecto, validados contra la misma lista de tipos.
+#
+# Agregar una fila significa que los tres lugares tienen que cubrirla. Quitarla
+# significa que el portafolio deja de afirmar que reconoce ese tipo.
+#
+supabase	sb_secret_	sb_secret_[A-Za-z0-9_-]{20,}
+anthropic	sk-ant-	sk-ant-[A-Za-z0-9_-]{24,}
+resend	re_	(^|[^A-Za-z0-9_])re_[A-Za-z0-9_-]{24,}
+aws	AKIA	AKIA[0-9A-Z]{16}	A-Z0-9:16
+shopify-tka	shptka_	shp(tka|at|ss|ca|sa)_[A-Za-z0-9]{20,}
+shopify-at	shpat_	shp(tka|at|ss|ca|sa)_[A-Za-z0-9]{20,}
+shopify-ss	shpss_	shp(tka|at|ss|ca|sa)_[A-Za-z0-9]{20,}
+shopify-ca	shpca_	shp(tka|at|ss|ca|sa)_[A-Za-z0-9]{20,}
+shopify-sa	shpsa_	shp(tka|at|ss|ca|sa)_[A-Za-z0-9]{20,}
+calcom	cal_live_	cal_live_[A-Za-z0-9_-]{20,}
