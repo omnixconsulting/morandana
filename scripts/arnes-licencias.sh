@@ -12,7 +12,7 @@
 # nunca como verdes: un caso que no corrió no es un caso que pasó.
 
 set -uo pipefail
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || exit 1
 RAIZ="$PWD"
 VALIDADOR="$RAIZ/scripts/validar-cadena.sh"
 CONTRATO="$RAIZ/contracts/licencias-excepciones.txt"
@@ -30,12 +30,12 @@ caso() {
     echo "  ✗ $nombre — el validador PASÓ y debía fallar"; fallos=$((fallos+1)); return
   fi
   if [ "$espera" = "pasa" ] && [ "$codigo" -ne 0 ]; then
-    echo "  ✗ $nombre — el validador falló y debía pasar:"; echo "$salida" | sed 's/^/      /'
+    echo "  ✗ $nombre — el validador falló y debía pasar:"; echo "      ${salida//$'\n'/$'\n'      }"
     fallos=$((fallos+1)); return
   fi
   if [ -n "$esperado" ] && ! grep -qF -e "$esperado" <<<"$salida"; then
     echo "  ✗ $nombre — falló, pero no por lo esperado («$esperado»):"
-    echo "$salida" | sed 's/^/      /'; fallos=$((fallos+1)); return
+    echo "      ${salida//$'\n'/$'\n'      }"; fallos=$((fallos+1)); return
   fi
   echo "  ✓ $nombre"
 }
