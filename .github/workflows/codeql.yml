@@ -2,10 +2,19 @@ name: CodeQL
 # Repo privado en plan Free: sin Code Scanning en GitHub. Se analiza igual, el SARIF
 # se guarda como artefacto y el job falla si hay hallazgos (error/warning).
 #
-# NO corre en push a main, a propósito: este repo fusiona con SQUASH, así que el
-# commit que cae en main tiene el contenido exacto que ya se analizó en el PR y
-# la segunda corrida no aportaba nada, solo minutos de Actions. El cron semanal
-# queda de red para cualquier cosa que entrara sin pasar por un PR (oct-2026).
+# NO corre en push a main, a propósito: la segunda corrida costaba minutos de
+# Actions y no compraba cobertura. El cron semanal queda de red para cualquier
+# cosa que entrara sin pasar por un PR (oct-2026).
+#
+# PERO EL SQUASH NO DEJA EL MISMO ÁRBOL, y esa era la razón que daba este
+# comentario: `actions/checkout` en un PR toma `refs/pull/N/merge` —el PR
+# fusionado con main AL MOMENTO DE LA CORRIDA— y main se mueve después. El hueco
+# es real; lo que lo cierra es el análisis del PR SIGUIENTE, no una corrida en
+# `push`. Se midió el 8-nov-2026, después de que alguien leyera esta explicación,
+# viera el hueco y encendiera `push` en otro repo del portafolio. La decisión,
+# los números y la condición que la voltearía están en `docs/proceso-qa.md` del
+# landing, Nivel 1; se rehacen con `scripts/divergencia-codeql.mjs`. Mover este
+# lado exige volver a correrlo.
 on:
   # SIN `paths-ignore`, A PROPOSITO (13-oct-2026)
   #
